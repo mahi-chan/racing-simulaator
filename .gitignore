@@ -1,0 +1,13 @@
+# FastF1 telemetry cache (downloaded, large)
+data/fastf1_cache/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Editors
+.idea/
+.vscode/

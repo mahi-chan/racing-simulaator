@@ -1,0 +1,9 @@
+# Layer 1 — vehicle model
+numpy
+
+# Layer 2 — track environment (FastF1 reconstruction + geometry)
+scipy
+fastf1
+
+# Test runner (tests also run standalone: python tests/test_track.py)
+pytest

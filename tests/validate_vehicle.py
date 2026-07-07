@@ -1,6 +1,11 @@
 """Validate the vehicle model against known F1 performance envelopes."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # repo root
+
 import numpy as np
-from vehicle_model import F1Vehicle, CarSpec, G
+from src.physics.vehicle_model import F1Vehicle, CarSpec, G
 
 def straight_line():
     car = F1Vehicle(); car.reset(speed=0.0)

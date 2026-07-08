@@ -30,8 +30,9 @@ weaken thresholds to force a pass. If a spec is unclear, ask before coding.
 ## Build order & status
 
 1. Vehicle model (car spec + dynamics) — ✅ DONE, validated.
-2. Track environment (FastF1 Silverstone + synthetic fallback) — ▶ NEXT.
-3. Conditions model (tire compounds, degradation, fuel burn, weather) — pending.
+2. Track environment (FastF1 Silverstone + synthetic fallback) — ✅ DONE, validated
+   offline (T8 real-Silverstone check still needs one online run).
+3. Conditions model (tire compounds, degradation, fuel burn, weather) — ▶ NEXT.
 4. Gym environment wrapper (obs / action / reward / termination + domain randomization) — pending.
 5. SAC driver agent — pending.
 6. Training loop + curriculum + domain randomization (generalist driver) — pending.
@@ -47,6 +48,19 @@ load-sensitive Pacejka tires with a friction ellipse, longitudinal load transfer
 low-speed kinematic blend. numpy only. Validated: 0–100 in 2.7 s, top speed 344 km/h,
 braking peak 4.8 G, cornering peak 4.1 G. Tire grip is deliberately conservative and is
 a calibration target for Layer 7.
+
+## Layer 2 — track environment (built)
+
+`src/tracks/track.py`, tested by `tests/test_track.py` (pytest or standalone). Closed
+centerline points → periodic smoothing spline → uniform 2 m arc-length resample.
+Queryable at any s, wrap-safe: heading / curvature (signed, +left) / width; KD-tree
+`nearest_point(x, y)` → (s, lateral offset, +left of travel); corner detection;
+`raw_closure_gap` sanity metric. Sources: `Track.from_fastf1` (Silverstone — FastF1
+X/Y are **decimeters**) and `Track.from_synthetic` (offline fallback, 5348.9 m, exact
+ground-truth corner metadata). Validated offline: curvature matches designed arc radii,
+all 8 designed corners found, ~24k nearest-point queries/s (floor 5k). T8 (real
+Silverstone: 5891 m ±3%, ≥15 corners) auto-skips offline — run once online on the
+user's machine/Colab.
 
 ## Project structure
 
@@ -68,6 +82,7 @@ f1-racing-rl/
 - Python 3.10+. Use a venv. Deps added per layer, kept minimal:
   L1 `numpy` · L2 `+fastf1 scipy` · L3+ (same) · L4–6 `+gymnasium stable-baselines3 sb3-contrib torch` · L8 `+optuna`
 - Run Layer 1 validation: `python tests/validate_vehicle.py`
+- Run Layer 2 validation: `python tests/test_track.py` (or `pytest tests/`)
 
 ## Conventions (important)
 
@@ -82,6 +97,7 @@ f1-racing-rl/
 
 ## Current task
 
-Layer 2 — see `LAYER_SPECS.md` § Layer 2. Reconstruct Silverstone from FastF1 with a
-synthetic offline fallback; build the queryable Track object and its tests. The real
-FastF1 download needs internet + cache and runs on the user's machine/Colab.
+Layer 3 — see `LAYER_SPECS.md` § Layer 3: conditions model (tire compounds,
+degradation, fuel burn, weather). Plan in Claude.ai chat before implementing here.
+Leftover from Layer 2: run `python tests/test_track.py` once online to exercise T8
+(real Silverstone reconstruction).

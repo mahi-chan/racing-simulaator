@@ -32,6 +32,7 @@ requires it.
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,6 +66,10 @@ class TrackConfig:
     # F1 telemetry has no width channel; constant placeholder (real F1 tracks
     # are ~10-15 m wide). Calibration target for Layer 7.
     default_width: float = 12.0       # m
+    # synthetic track only: gentle width variation around default_width so
+    # width_at(s) interpolation is genuinely exercised by the offline tests
+    synthetic_width_amplitude: float = 2.0  # m
+    synthetic_width_periods: int = 3        # oscillations per lap
 
     # --- corner detection (peaks of |curvature|) ---
     corner_min_curvature: float = 0.005   # 1/m -> radius < 200 m counts as a corner
@@ -82,7 +87,7 @@ class Track:
     """A closed racing circuit, queryable by position or arc length."""
 
     def __init__(self, points: np.ndarray, *, smoothing_per_point: float,
-                 config: TrackConfig | None = None, width_fn=None,
+                 config: TrackConfig | None = None, width_profile=None,
                  source: str = "custom"):
         """Build a track from a closed loop of raw XY points (N x 2, meters).
 
@@ -90,14 +95,16 @@ class Track:
             points: raw centerline samples tracing the loop once (last point
                 need not repeat the first; closure is enforced by the fit).
             smoothing_per_point: splprep residual budget per input point (m^2).
-            width_fn: optional callable mapping an array of s values to track
-                width (m); default is the constant `config.default_width`.
+            width_profile: optional callable mapping the (N,) array of arc
+                lengths s (whose last entry equals the track length) to track
+                widths (m); default is the constant `config.default_width`.
             source: provenance string (e.g. "synthetic", "fastf1:...").
         """
         self.config = config or TrackConfig()
         self.source = source
         self.design_corners = None  # ground-truth corner spans (synthetic only)
-        self._build(np.asarray(points, dtype=float), smoothing_per_point, width_fn)
+        self._build(np.asarray(points, dtype=float), smoothing_per_point,
+                    width_profile)
 
     # -- constructors ---------------------------------------------------------
     @classmethod
@@ -123,6 +130,9 @@ class Track:
         # fastf1 >= 3.1 uses pick_drivers; fall back for older versions
         picker = getattr(laps, "pick_drivers", None) or laps.pick_driver
         lap = picker(driver).pick_fastest()
+        if lap is None:
+            raise ValueError(
+                f"no fastest lap for driver {driver!r} in {year} {gp} {session}")
         pos = lap.get_pos_data()
 
         # FastF1 world coordinates are in DECIMETERS -> scale to meters.
@@ -130,6 +140,10 @@ class Track:
                               pos["Y"].to_numpy(dtype=float)]) * 0.1
         xy = xy[~np.isnan(xy).any(axis=1)]
         xy = xy[~np.all(xy == 0.0, axis=1)]  # (0,0) rows = missing GPS fixes
+        if len(xy) < 8:
+            raise ValueError(
+                f"degenerate position trace for {driver!r}: "
+                f"{len(xy)} usable GPS points")
 
         return cls(xy, smoothing_per_point=cfg.fastf1_smoothing, config=cfg,
                    source=f"fastf1:{year}-{gp}-{session}-{driver}")
@@ -144,17 +158,20 @@ class Track:
         """
         cfg = config or TrackConfig()
         points, corner_meta = _synthetic_layout(cfg.resample_spacing)
+
+        def width_profile(s: np.ndarray) -> np.ndarray:
+            # synthetic width placeholder (see TrackConfig); s[-1] == length
+            return cfg.default_width + cfg.synthetic_width_amplitude * np.sin(
+                2.0 * np.pi * cfg.synthetic_width_periods * s / s[-1])
+
         track = cls(points, smoothing_per_point=cfg.synthetic_smoothing,
-                    config=cfg, source="synthetic")
-        # Synthetic width placeholder: gentle 10-14 m variation (3 periods over
-        # the lap) so width_at(s) interpolation is genuinely exercised offline.
-        track._width = cfg.default_width + 2.0 * np.sin(
-            2.0 * np.pi * 3.0 * track._s / track._length)
+                    config=cfg, width_profile=width_profile, source="synthetic")
         track.design_corners = corner_meta
         return track
 
     # -- construction pipeline -------------------------------------------------
-    def _build(self, points: np.ndarray, smoothing_per_point: float, width_fn):
+    def _build(self, points: np.ndarray, smoothing_per_point: float,
+               width_profile):
         if points.ndim != 2 or points.shape[1] != 2 or len(points) < 8:
             raise ValueError("points must be an (N>=8) x 2 array of XY meters")
 
@@ -162,8 +179,13 @@ class Track:
         keep = np.ones(len(points), dtype=bool)
         keep[1:] = np.hypot(*np.diff(points, axis=0).T) > 0.01
         pts = points[keep]
+        # Closure of the RAW input loop, measured BEFORE the periodic fit
+        # enforces closure (the fitted spline's endpoints always coincide by
+        # construction, so only this gap says whether the source trace really
+        # closed). Exposed for the acceptance tests.
+        self.raw_closure_gap = float(np.hypot(*(pts[0] - pts[-1])))
         # close the loop explicitly so splprep(per=1) doesn't warn/adjust
-        if np.hypot(*(pts[0] - pts[-1])) > 0.01:
+        if self.raw_closure_gap > 0.01:
             pts = np.vstack([pts, pts[0]])
         else:
             pts[-1] = pts[0]
@@ -194,14 +216,20 @@ class Track:
         ddx, ddy = interpolate.splev(u, tck, der=2)
         self._centerline = np.column_stack([x, y])
         norm = np.hypot(dx, dy)
-        self._tx, self._ty = dx / norm, dy / norm  # unit tangents
+        # unwrapped tangent heading per point: heading_at needs one interp
+        # (not two), and a simple closed loop must wind by exactly +/-2 pi
+        # from first to last entry — a testable closure invariant.
+        self._heading_unwrapped = np.unwrap(np.arctan2(dy, dx))
         # signed curvature, parametrization-invariant; positive = left/CCW turn
         self._curvature = (dx * ddy - dy * ddx) / norm ** 3
 
-        self._width = (width_fn(self._s) if width_fn is not None
+        self._width = (width_profile(self._s) if width_profile is not None
                        else np.full(n, self.config.default_width))
         self._tree = cKDTree(self._centerline)
-        self._n = n
+        # plain-float copies for the scalar-math hot path in nearest_point
+        self._px = self._centerline[:, 0].tolist()
+        self._py = self._centerline[:, 1].tolist()
+        self._s_list = self._s.tolist()
         self._corners = self._detect_corners()
 
     def _detect_corners(self) -> list[float]:
@@ -212,13 +240,14 @@ class Track:
         # across the start/finish seam
         shift = int(np.argmin(kappa))
         rolled = np.roll(kappa, -shift)
-        spacing = self._length / (self._n - 1)
+        n_seg = len(self._s) - 1
+        spacing = self._length / n_seg
         peaks, _ = signal.find_peaks(
             rolled,
             height=cfg.corner_min_curvature,
             prominence=cfg.corner_min_prominence,
             distance=max(int(cfg.corner_min_separation / spacing), 1))
-        idx = (peaks + shift) % (self._n - 1)
+        idx = (peaks + shift) % n_seg
         return sorted(float(self._s[i]) for i in idx)
 
     # -- properties (per spec) --------------------------------------------------
@@ -258,12 +287,10 @@ class Track:
         return np.interp(np.asarray(s) % self._length, self._s, self._curvature)
 
     def heading_at(self, s) -> float | np.ndarray:
-        """Centerline heading (rad, atan2 convention) at arc length s."""
-        s_mod = np.asarray(s) % self._length
-        tx = np.interp(s_mod, self._s, self._tx)
-        ty = np.interp(s_mod, self._s, self._ty)
-        out = np.arctan2(ty, tx)
-        return float(out) if np.isscalar(s) or np.asarray(s).ndim == 0 else out
+        """Centerline heading (rad) at arc length s, wrapped to [-pi, pi)."""
+        h = np.interp(np.asarray(s) % self._length, self._s,
+                      self._heading_unwrapped)
+        return (h + np.pi) % (2.0 * np.pi) - np.pi
 
     def nearest_point(self, x: float, y: float) -> tuple[float, float]:
         """Project (x, y) onto the centerline.
@@ -271,26 +298,35 @@ class Track:
         Returns:
             (s, lateral_offset): arc length of the projection in [0, length),
             and the signed lateral distance (m, positive = left of travel).
+
+        Scalar math on purpose: this runs every environment step, and numpy
+        dispatch on 2-element arrays costs more than the arithmetic itself.
+        Both KD-tree hits are considered so the projection cannot jump to the
+        wrong branch where two track sections pass near each other.
         """
-        p = np.array([x, y], dtype=float)
-        _, idx = self._tree.query(p)
-        n_seg = self._n - 1  # segments 0..n-2; segment i joins points i, i+1
-        best = None
-        for a in ((idx - 1) % n_seg, idx % n_seg):
-            A = self._centerline[a]
-            B = self._centerline[a + 1]
-            ab = B - A
-            seg2 = float(ab @ ab)
-            t = 0.0 if seg2 == 0.0 else float(np.clip((p - A) @ ab / seg2, 0.0, 1.0))
-            foot = A + t * ab
-            d2 = float((p - foot) @ (p - foot))
-            if best is None or d2 < best[0]:
-                seglen = np.sqrt(seg2)
-                s_here = self._s[a] + t * seglen
+        _, idx = self._tree.query((x, y), k=2)
+        px, py, s_arr = self._px, self._py, self._s_list
+        n_seg = len(px) - 1  # segments 0..n-2; segment i joins points i, i+1
+        cands = {(int(idx[0]) - 1) % n_seg, int(idx[0]) % n_seg,
+                 (int(idx[1]) - 1) % n_seg, int(idx[1]) % n_seg}
+        best_d2, best_s, best_lat = math.inf, 0.0, 0.0
+        for a in cands:
+            ax, ay = px[a], py[a]
+            abx, aby = px[a + 1] - ax, py[a + 1] - ay
+            seg2 = abx * abx + aby * aby
+            if seg2 == 0.0:
+                continue
+            t = ((x - ax) * abx + (y - ay) * aby) / seg2
+            t = 0.0 if t < 0.0 else (1.0 if t > 1.0 else t)
+            fx, fy = ax + t * abx, ay + t * aby
+            d2 = (x - fx) * (x - fx) + (y - fy) * (y - fy)
+            if d2 < best_d2:
+                seglen = math.sqrt(seg2)
+                best_d2 = d2
+                best_s = s_arr[a] + t * seglen
                 # signed perpendicular distance: cross(ab, p-A) / |ab|
-                lat = float((ab[0] * (p[1] - A[1]) - ab[1] * (p[0] - A[0])) / seglen)
-                best = (d2, s_here, lat)
-        return best[1] % self._length, best[2]
+                best_lat = (abx * (y - ay) - aby * (x - ax)) / seglen
+        return best_s % self._length, best_lat
 
     def is_on_track(self, x: float, y: float) -> bool:
         """True if (x, y) lies within half the local track width."""

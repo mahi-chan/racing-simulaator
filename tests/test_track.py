@@ -39,20 +39,43 @@ def _wrap_ds(ds: float, length: float) -> float:
     return min(abs(ds), length - abs(ds))
 
 
+def _left_normal(track: Track, s: float) -> np.ndarray:
+    """Unit normal pointing LEFT of travel at s — the +lateral direction.
+
+    Deliberately rebuilt from heading_at here (not from track internals), so
+    the tests probe the documented sign convention from first principles.
+    """
+    h = track.heading_at(s)
+    return np.array([-np.sin(h), np.cos(h)])
+
+
 # ---------------------------------------------------------------------------
 # T1 — closed loop, plausible length, monotonic s          [spec bullets 1]
 # ---------------------------------------------------------------------------
 def test_t1_closed_loop_and_length():
     t = synthetic()
+    # spec's literal check — NOTE: the periodic fit forces the resampled
+    # endpoints to coincide, so the falsifiable closure evidence is below
     gap = float(np.hypot(*(t.centerline[0] - t.centerline[-1])))
     assert gap < 1.0, f"loop does not close: start/end gap {gap:.3f} m"
+    # falsifiable closure #1: the RAW input loop closed on its own, BEFORE the
+    # periodic spline was allowed to bridge any gap
+    max_raw_gap = 2.0 * TrackConfig().resample_spacing
+    assert t.raw_closure_gap < max_raw_gap, \
+        f"raw input loop has a {t.raw_closure_gap:.1f} m start/finish gap"
+    # falsifiable closure #2: heading winds exactly once (+/-2 pi) around the
+    # loop — an open or self-crossing curve cannot satisfy this
+    seg = np.diff(t.centerline, axis=0)
+    winding = np.unwrap(np.arctan2(seg[:, 1], seg[:, 0]))
+    assert abs(abs(winding[-1] - winding[0]) - 2.0 * np.pi) < np.radians(1.0), \
+        f"heading winds {np.degrees(winding[-1] - winding[0]):.1f} deg, not 360"
     assert t.length > 0.0
     assert 4000.0 <= t.length <= 6000.0, f"synthetic length {t.length:.0f} m not ~5 km"
     ds = np.diff(t.s)
     assert np.all(ds > 0.0), "s is not strictly monotonic"
     assert t.s[0] == 0.0 and abs(t.s[-1] - t.length) < 1e-6
     print(f"    synthetic: length {t.length:.1f} m, {len(t.centerline)} points, "
-          f"closure gap {gap:.2e} m")
+          f"raw closure gap {t.raw_closure_gap:.2f} m")
 
 
 # ---------------------------------------------------------------------------
@@ -63,8 +86,7 @@ def test_t2_nearest_point_self_consistency():
     n = len(t.centerline)
     for i in np.linspace(0, n - 2, 48, dtype=int):  # includes wrap region
         s_true = float(t.s[i])
-        h = t.heading_at(s_true)
-        normal = np.array([-np.sin(h), np.cos(h)])  # left of travel
+        normal = _left_normal(t, s_true)
         for d in (-3.0, 0.0, 3.0):
             p = t.centerline[i] + d * normal
             s_hat, lat = t.nearest_point(p[0], p[1])
@@ -87,10 +109,21 @@ def test_t3_heading():
         err = abs(_ang_diff(t.heading_at(float(t.s[i])), h_chord))
         assert err < np.radians(2.0), \
             f"heading off by {np.degrees(err):.2f} deg at s={t.s[i]:.1f}"
-    # periodic: s and s + length give the same heading; seam is continuous
-    for s in (0.0, 123.4, t.length * 0.5, t.length - 0.5):
-        assert abs(_ang_diff(t.heading_at(s + t.length), t.heading_at(s))) < 1e-6
-    assert abs(_ang_diff(t.heading_at(t.length), t.heading_at(0.0))) < 1e-3
+    # seam continuity, crossing DIFFERENT interpolation cells (heading_at's
+    # internal modulo makes heading_at(s + length) == heading_at(s) by
+    # arithmetic, so that comparison proves nothing): heading just before the
+    # finish line must match heading just after it, up to the rotation the
+    # local curvature produces over the 2*eps span
+    eps = 0.5
+    kappa_seam = max(abs(float(t.curvature_at(t.length - eps))),
+                     abs(float(t.curvature_at(eps))))
+    tol = 2.0 * eps * kappa_seam + np.radians(0.1)
+    seam_err = abs(_ang_diff(t.heading_at(t.length - eps), t.heading_at(eps)))
+    assert seam_err < tol, \
+        f"heading kink at the seam: {np.degrees(seam_err):.3f} deg"
+    # wrap arithmetic: negative and beyond-length s map into [0, length)
+    assert abs(_ang_diff(t.heading_at(-1.0), t.heading_at(t.length - 1.0))) < 1e-9
+    assert abs(_ang_diff(t.heading_at(t.length + 7.0), t.heading_at(7.0))) < 1e-9
 
 
 # ---------------------------------------------------------------------------
@@ -102,8 +135,7 @@ def test_t4_is_on_track():
     margin = 1.0  # m beyond the half-width must be off-track
     for i in np.linspace(0, n - 2, 40, dtype=int):
         s = float(t.s[i])
-        h = t.heading_at(s)
-        normal = np.array([-np.sin(h), np.cos(h)])
+        normal = _left_normal(t, s)
         half_w = float(t.width_at(s)) / 2.0
         cx, cy = t.centerline[i]
         assert t.is_on_track(cx, cy), f"centerline point off-track at s={s:.1f}"
@@ -178,8 +210,8 @@ def test_t7_query_performance():
     n_q = 5000
     idx = rng.integers(0, len(t.centerline) - 1, n_q)
     lat = rng.uniform(-8.0, 8.0, n_q)
-    h = np.array([t.heading_at(float(t.s[i])) for i in idx])
-    pts = t.centerline[idx] + lat[:, None] * np.column_stack([-np.sin(h), np.cos(h)])
+    normals = np.array([_left_normal(t, float(t.s[i])) for i in idx])
+    pts = t.centerline[idx] + lat[:, None] * normals
     t0 = time.perf_counter()
     for x, y in pts:
         t.nearest_point(float(x), float(y))
@@ -214,16 +246,26 @@ def test_t8_silverstone_reconstruction():
         raise SkipTest("F1 API unreachable and no warm cache — run online (see GUIDE.md)")
     try:
         t = Track.from_fastf1(year=2023, gp="Silverstone", session="Q", driver="VER")
-    except Exception as e:  # never fail the suite on network/data trouble (spec)
-        raise SkipTest(f"FastF1 data unavailable: {type(e).__name__}: {e}")
+    except Exception as e:
+        # spec: never fail the suite for lack of network/data — but ONLY
+        # availability-shaped errors may skip. Contract bugs in our fastf1
+        # usage (AttributeError, KeyError, ...) must FAIL when run online.
+        import requests
+        availability = (ImportError, OSError, ValueError, requests.RequestException)
+        if isinstance(e, availability) or type(e).__module__.startswith("fastf1"):
+            raise SkipTest(f"FastF1 data unavailable: {type(e).__name__}: {e}")
+        raise
 
     lo, hi = 0.97 * SILVERSTONE_LENGTH, 1.03 * SILVERSTONE_LENGTH
     assert lo <= t.length <= hi, \
         f"Silverstone length {t.length:.0f} m outside {lo:.0f}-{hi:.0f} m"
     n_corners = len(t.corners)
     assert n_corners >= 15, f"only {n_corners} corners detected (Silverstone has 18)"
-    gap = float(np.hypot(*(t.centerline[0] - t.centerline[-1])))
-    assert gap < 1.0, f"reconstructed loop does not close (gap {gap:.2f} m)"
+    # the RAW lap trace must nearly close on its own (a flying lap's GPS
+    # start/finish gap is one sample, ~20 m at speed) — the fitted spline's
+    # endpoint gap is forced to zero by construction and proves nothing
+    assert t.raw_closure_gap < 50.0, \
+        f"raw lap trace start/finish gap {t.raw_closure_gap:.1f} m"
     assert np.all(np.diff(t.s) > 0.0)
     print(f"    Silverstone: length {t.length:.1f} m "
           f"(official {SILVERSTONE_LENGTH:.0f}), {n_corners} corners")

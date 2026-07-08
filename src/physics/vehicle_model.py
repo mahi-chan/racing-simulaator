@@ -23,7 +23,7 @@ team's confidential data. Only numpy is required.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import numpy as np
 
 G = 9.81            # gravity (m/s^2)
@@ -195,19 +195,19 @@ class F1Vehicle:
         # --- longitudinal forces ---
         drive = self._drive_force(throttle, vx, st.gear)          # rear axle
         brake_cmd = float(np.clip(brake, 0.0, 1.0)) * s.max_brake_force
-        # brake opposes motion
+        # vx is clamped >= 0 (no reversing in this baseline), so brake, drag
+        # and rolling resistance always oppose forward motion.
         brake_f_axle = brake_cmd * s.brake_bias_front
         brake_r_axle = brake_cmd * (1.0 - s.brake_bias_front)
-        sign = 1.0 if vx >= 0 else -1.0
 
-        drag = 0.5 * RHO_AIR * s.cda * vx * vx * sign
-        roll = s.rolling_resistance * (fz_f + fz_r) * sign
+        drag = 0.5 * RHO_AIR * s.cda * vx * vx
+        roll = s.rolling_resistance * (fz_f + fz_r)
 
         # --- friction ellipse: cap each axle's longitudinal force by remaining grip ---
         fx_r_cap = np.sqrt(max((s.mu_x * fz_r) ** 2 - fy_r ** 2, 0.0))
         fx_f_cap = np.sqrt(max((s.mu_x * fz_f) ** 2 - fy_f ** 2, 0.0))
-        fx_r = np.clip(drive - brake_r_axle * sign, -fx_r_cap, fx_r_cap)
-        fx_f = np.clip(-brake_f_axle * sign, -fx_f_cap, fx_f_cap)
+        fx_r = np.clip(drive - brake_r_axle, -fx_r_cap, fx_r_cap)
+        fx_f = np.clip(-brake_f_axle, -fx_f_cap, fx_f_cap)
 
         fx_total = fx_r + fx_f - drag - roll
 

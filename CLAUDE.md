@@ -33,8 +33,8 @@ weaken thresholds to force a pass. If a spec is unclear, ask before coding.
 2. Track environment (FastF1 Silverstone + synthetic fallback) — ✅ DONE, validated
    offline (T8 real-Silverstone check still needs one online run).
 3. Conditions model (tire compounds, degradation, fuel burn, weather) — ✅ DONE, validated.
-4. Gym environment wrapper (obs / action / reward / termination + domain randomization) — ▶ NEXT.
-5. SAC driver agent — pending.
+4. Gym environment wrapper (obs / action / reward / termination + domain randomization) — ✅ DONE, validated.
+5. SAC driver agent — ▶ NEXT.
 6. Training loop + curriculum + domain randomization (generalist driver) — pending.
 7. Telemetry calibration & validation — pending (justifies "no physical testing").
 8. Setup optimization (best setup per track+weather) — pending (the deliverable).
@@ -78,6 +78,27 @@ job). One aggregate tire; weather fixed per stint. Pure-scalar stdlib hot loop,
 grip, +100 kg fuel = +0.30 s over an 800 m sprint-and-brake, grip 0.52 → peak
 lateral 1.5 G vs 3.0 G fresh.
 
+## Layer 4 — gym environment wrapper (built)
+
+`src/envs/f1_env.py`, tested by `tests/test_env.py` (pytest or standalone).
+`F1Env(gymnasium.Env)` wraps vehicle + track + conditions. Obs: 40-dim float32 Box,
+normalized — car dynamics, prev controls, 10-point look-ahead curvature (10–330 m),
+tire/fuel/weather (one-hots), ERS battery, DRS flag, setup knobs. Action: 6-dim Box —
+throttle, brake, steer, gear target, ERS deploy, DRS request. Reward = sum of named
+components in `info["reward_components"]`: progress (wrap-aware Δs), speed, track,
+smooth, tire, fuel, terminal. Each step rewrites the episode `CarSpec` from cached
+bases: grip multiplier → mu, 4 MJ ERS battery → power (ICE 615 + MGU-K 120 kW = L1's
+735 at full deploy), DRS (gated |κ| < 0.0025) → aero, fuel → mass via
+`__post_init__()`; Layers 1–3 untouched. `reset()` domain-randomizes weather /
+compound / rain / track temp / fuel (20–105 kg) / aero / brake bias / final drive /
+start pose — every knob pinnable via `options` for evaluation. Termination
+off_track / spin / fuel_out / stall (config-gated); truncation lap complete
+(`info["lap_time"]`) or 15k steps. Validated: check_env clean; 10k random steps
+finite; components sum exactly; seed-bit-reproducible; pursuit driver laps 140.7 s
+(avg 137 km/h) vs random no-laps; damp +30% lap time on equal compound; +85 kg fuel
++0.7 s; 3,742 steps/s (floor 2000). Emergent, kept: slicks run cold after the long
+straight (soft ≈ wet-wet pace with a cautious driver) — L7 calibration target.
+
 ## Project structure
 
 ```
@@ -100,6 +121,7 @@ f1-racing-rl/
 - Run Layer 1 validation: `python tests/validate_vehicle.py`
 - Run Layer 2 validation: `python tests/test_track.py` (or `pytest tests/`)
 - Run Layer 3 validation: `python tests/test_conditions.py`
+- Run Layer 4 validation: `python tests/test_env.py`
 
 ## Conventions (important)
 
@@ -114,7 +136,6 @@ f1-racing-rl/
 
 ## Current task
 
-Layer 4 — see `LAYER_SPECS.md` § Layer 4: gym environment wrapper (obs / action /
-reward / termination + domain randomization). Plan in Claude.ai chat before
-implementing here. Leftover from Layer 2: run `python tests/test_track.py` once
-online to exercise T8 (real Silverstone reconstruction).
+Layer 5 — see `LAYER_SPECS.md` § Layer 5: SAC driver agent. Plan in Claude.ai chat
+before implementing here. Leftover from Layer 2: run `python tests/test_track.py`
+once online to exercise T8 (real Silverstone reconstruction).

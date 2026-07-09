@@ -5,5 +5,8 @@ numpy
 scipy
 fastf1
 
+# Layer 4 — gym environment wrapper
+gymnasium
+
 # Test runner (tests also run standalone: python tests/test_track.py)
 pytest

@@ -32,8 +32,8 @@ weaken thresholds to force a pass. If a spec is unclear, ask before coding.
 1. Vehicle model (car spec + dynamics) — ✅ DONE, validated.
 2. Track environment (FastF1 Silverstone + synthetic fallback) — ✅ DONE, validated
    offline (T8 real-Silverstone check still needs one online run).
-3. Conditions model (tire compounds, degradation, fuel burn, weather) — ▶ NEXT.
-4. Gym environment wrapper (obs / action / reward / termination + domain randomization) — pending.
+3. Conditions model (tire compounds, degradation, fuel burn, weather) — ✅ DONE, validated.
+4. Gym environment wrapper (obs / action / reward / termination + domain randomization) — ▶ NEXT.
 5. SAC driver agent — pending.
 6. Training loop + curriculum + domain randomization (generalist driver) — pending.
 7. Telemetry calibration & validation — pending (justifies "no physical testing").
@@ -62,6 +62,22 @@ all 8 designed corners found, ~24k nearest-point queries/s (floor 5k). T8 (real
 Silverstone: 5891 m ±3%, ≥15 corners) auto-skips offline — run once online on the
 user's machine/Colab.
 
+## Layer 3 — conditions model (built)
+
+`src/physics/conditions.py`, tested by `tests/test_conditions.py` (pytest or
+standalone). Stint state that modulates the car: `TireCompound` registry
+(soft/medium/hard/intermediate/wet — peak grip, wear rate, temp window) and
+`Conditions` (compound, wear 0–1, tire temp, fuel, weather dry/damp/wet, rain
+intensity, track temp). `step(dt, load, slip, throttle=1.0)` advances wear
+(load/slip-driven, cliff at 0.75), temperature (friction heating vs Newtonian
+cooling toward track temp), and fuel burn (throttle duty). `grip_multiplier()` =
+compound × wear × temperature × weather (named breakdown via `grip_components()`);
+`fuel_mass` feeds `CarSpec.fuel_mass` (env must re-run `__post_init__` — Layer 4's
+job). One aggregate tire; weather fixed per stint. Pure-scalar stdlib hot loop,
+~1M steps/s. Validated: wet 32% below dry, inter best in damp, dead tire −51%
+grip, +100 kg fuel = +0.30 s over an 800 m sprint-and-brake, grip 0.52 → peak
+lateral 1.5 G vs 3.0 G fresh.
+
 ## Project structure
 
 ```
@@ -83,6 +99,7 @@ f1-racing-rl/
   L1 `numpy` · L2 `+fastf1 scipy` · L3+ (same) · L4–6 `+gymnasium stable-baselines3 sb3-contrib torch` · L8 `+optuna`
 - Run Layer 1 validation: `python tests/validate_vehicle.py`
 - Run Layer 2 validation: `python tests/test_track.py` (or `pytest tests/`)
+- Run Layer 3 validation: `python tests/test_conditions.py`
 
 ## Conventions (important)
 
@@ -97,7 +114,7 @@ f1-racing-rl/
 
 ## Current task
 
-Layer 3 — see `LAYER_SPECS.md` § Layer 3: conditions model (tire compounds,
-degradation, fuel burn, weather). Plan in Claude.ai chat before implementing here.
-Leftover from Layer 2: run `python tests/test_track.py` once online to exercise T8
-(real Silverstone reconstruction).
+Layer 4 — see `LAYER_SPECS.md` § Layer 4: gym environment wrapper (obs / action /
+reward / termination + domain randomization). Plan in Claude.ai chat before
+implementing here. Leftover from Layer 2: run `python tests/test_track.py` once
+online to exercise T8 (real Silverstone reconstruction).

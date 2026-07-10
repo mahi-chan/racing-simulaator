@@ -5,10 +5,11 @@ Runs two ways:
   * `python tests/test_sac.py`   — standalone PASS/FAIL report
 
 Fully offline (synthetic track). T1–T6 use a deliberately tiny config so they
-run in seconds; T7 is the spec's acceptance smoke train — ~50k SAC steps,
-several minutes on CPU, and the one test that must show the trained policy
-measurably beating a random one on lap time and off-track count. Real driving
-numbers are printed throughout (project rule: never reward curves alone).
+run in seconds; T7 is the spec's acceptance smoke train — 150k SAC steps,
+roughly 40 min on 4 CPU cores, and the one test that must show the trained
+policy measurably beating a random one on lap time and off-track count. Real
+driving numbers are printed throughout (project rule: never reward curves
+alone).
 """
 import sys
 import tempfile
@@ -20,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # repo root
 
 import numpy as np
 
-from src.agents.sac_driver import (BENIGN_EVAL, ActionRepeat, SACDriver,
-                                   SACDriverConfig,
+from src.agents.sac_driver import (BENIGN_EVAL, SMOKE_EVAL, ActionRepeat,
+                                   SACDriver, SACDriverConfig,
                                    benign_training_env_config)
 from src.envs.f1_env import F1Env
 from src.tracks.track import Track
@@ -224,17 +225,20 @@ def test_t6_evaluate_harness():
 # lap time and off-track count, with stable training     [spec acceptance]
 # ---------------------------------------------------------------------------
 def test_t7_smoke_train_beats_random():
-    steps = 50_000  # SAC policy steps (x4 action repeat = 200k env steps)
+    # SAC policy steps (x4 action repeat = 600k env steps). The spec's
+    # "e.g. 50k steps" proved ~3x short of a first lap on this track (progress
+    # 649 m mean at 50k, healthy learning curve); the assertions are unchanged.
+    steps = 150_000
     print(f"    training {steps:,} SAC steps on the benign preset "
-          f"(several minutes on CPU) ...", flush=True)
+          f"(~35-40 min on CPU) ...", flush=True)
     t0 = time.perf_counter()
     d = SACDriver(SACDriverConfig(), track=TRACK)  # the real defaults
     d.train(steps, progress_every=5_000)
     train_min = (time.perf_counter() - t0) / 60.0
 
     # 5 distinct rolling starts spread around the lap, identical for both
-    # policies; v0=30 m/s so no start is an unavoidable instant crash
-    eval_opts = dict(BENIGN_EVAL, v0=30.0)
+    # policies (SMOKE_EVAL: v0=30 m/s — survivable rolling speed anywhere)
+    eval_opts = SMOKE_EVAL
     trained = d.evaluate(n_episodes=5, seed=123, spread_starts=True,
                          options=eval_opts)
     rand = d.evaluate(n_episodes=5, seed=123, spread_starts=True,

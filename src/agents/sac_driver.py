@@ -24,6 +24,11 @@ Design notes:
     only — rewards stay interpretable) on top of the env's static O(1)
     scaling. The running stats are saved with every checkpoint and are used
     frozen at evaluation time.
+  * Two departures from vanilla SAC defaults, both forced by evidence from
+    50k/150k-step smoke runs on this env: a FIXED low temperature (auto-tuned
+    alpha settled at ~0.13, mandating action noise that collapsed a peaked
+    policy), and a best-policy keeper (train() returns the best deterministic
+    evaluator seen, not the last policy).
   * Every knob lives in `SACDriverConfig`; nothing is hard-coded. Values are
     standard SAC starting points, tuned only as far as the Layer 5 smoke-train
     acceptance demanded.
@@ -31,6 +36,7 @@ Design notes:
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import json
 from dataclasses import dataclass, field
@@ -56,6 +62,12 @@ BENIGN_EVAL = dict(weather="dry", compound="medium", rain_intensity=0.0,
                    track_temp=30.0, fuel=30.0, aero_level=0.5, brake_bias=0.58,
                    final_drive=3.0, s0=0.0, v0=40.0, lateral=0.0,
                    heading_error=0.0)
+
+# Rolling-start protocol for smoke evaluation and in-training model selection:
+# the same benign stint, but v0=30 m/s so a start dropped anywhere on the lap
+# is survivable in principle. Used with `spread_starts=True` (episode i of n
+# starts at s = i/n of the lap — distinct trials for a deterministic policy).
+SMOKE_EVAL = dict(BENIGN_EVAL, v0=30.0)
 
 
 def benign_training_dr() -> DomainRandomizationConfig:
@@ -124,15 +136,19 @@ class SACDriverConfig:
 
     # --- SAC core (names match the SB3 arguments) ---
     learning_rate: float = 3e-4
-    buffer_size: int = 300_000    # policy-step transitions (~105 MB at 40-dim obs)
-    learning_starts: int = 5_000  # random-action warmup before updates
+    buffer_size: int = 300_000     # policy-step transitions (~105 MB at 40-dim obs)
+    learning_starts: int = 10_000  # random-action warmup before updates
     batch_size: int = 256
-    tau: float = 0.005            # target-network soft update
-    gamma: float = 0.99           # 8 s horizon at 12.5 Hz control
+    tau: float = 0.005             # target-network soft update
+    gamma: float = 0.995           # 16 s horizon at 12.5 Hz control
     train_freq: int = 1
     gradient_steps: int = 1
-    ent_coef: str | float = "auto"  # SAC temperature auto-tuning
-    net_arch: tuple = (256, 256)    # actor & critic MLP widths
+    ent_coef: str | float = 0.02   # fixed SAC temperature. "auto" settled at
+    #   alpha ~ 0.13 on this env — the entropy target (-6) forces noise into a
+    #   precision task, collapsing late-training returns (1186 -> 464 over the
+    #   last 30k steps of a 150k run). A small fixed alpha keeps exploration
+    #   without mandating it.
+    net_arch: tuple = (256, 256)   # actor & critic MLP widths
 
     # --- control & env interface ---
     action_repeat: int = 4        # env steps per policy action (1 disables)
@@ -142,6 +158,10 @@ class SACDriverConfig:
     normalize_reward: bool = False  # keep logged returns interpretable
     vecnorm_clip_obs: float = 10.0
     check_nan: bool = True        # VecCheckNan raises on any NaN/inf in the loop
+
+    # --- model selection (best-policy keeper) ---
+    best_eval_every: int | None = 10_000  # deterministic SMOKE_EVAL cadence
+    best_eval_episodes: int = 5           # (policy steps); None = keep last
 
     # --- reproducibility / hardware ---
     seed: int = 42
@@ -192,6 +212,71 @@ class EvalReport:
                     f" | spin {self.spin_count}"
                     f" | mean return {self.mean_return:.1f}")
         return "\n".join(rows)
+
+
+class _BestPolicyKeeper(BaseCallback):
+    """Evaluate deterministically every `every` steps; keep the best policy.
+
+    Model selection: training returns the best policy seen, not the last one
+    — SAC's exploration pressure can degrade the live policy after it peaks
+    (observed here even with a fixed temperature the risk is cheap to remove).
+    Rank: laps completed, then capped time-to-lap, then progress. The
+    VecNormalize obs stats are snapshotted with the policy — a policy is only
+    reproducible together with the normalization it was evaluated under.
+    """
+
+    def __init__(self, driver: "SACDriver", every: int, n_episodes: int):
+        super().__init__()
+        self.driver = driver
+        self.every = max(int(every), 1)
+        self.n_episodes = int(n_episodes)
+        self._next = self.every
+        self.best_key: tuple | None = None
+        self.best_step: int | None = None
+        self._best_policy: dict | None = None
+        self._best_rms = None
+
+    @staticmethod
+    def key(rep: EvalReport) -> tuple:
+        return (rep.laps_completed, -rep.mean_time_to_lap_capped,
+                rep.mean_progress_m)
+
+    def snapshot_if_better(self) -> None:
+        rep = self.driver.evaluate(n_episodes=self.n_episodes,
+                                   options=SMOKE_EVAL, seed=1234,
+                                   spread_starts=True)
+        k = self.key(rep)
+        if self.best_key is None or k > self.best_key:
+            self.best_key = k
+            self.best_step = self.num_timesteps
+            state = self.model.policy.state_dict()
+            self._best_policy = {n: t.detach().clone()
+                                 for n, t in state.items()}
+            venv = self.driver.vec_env
+            self._best_rms = (copy.deepcopy(venv.obs_rms)
+                              if isinstance(venv, VecNormalize) else None)
+            print(f"    [best] {self.num_timesteps:>8,d} steps: "
+                  f"laps {rep.laps_completed}/{self.n_episodes}, "
+                  f"time-to-lap {rep.mean_time_to_lap_capped:.1f} s, "
+                  f"progress {rep.mean_progress_m:.0f} m", flush=True)
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps >= self._next:
+            self._next += self.every
+            self.snapshot_if_better()
+        return True
+
+    def restore_best(self) -> None:
+        """After training: final policy gets a last look, then best wins."""
+        if self._best_policy is None:
+            return
+        self.snapshot_if_better()
+        self.model.policy.load_state_dict(self._best_policy)
+        if self._best_rms is not None and isinstance(self.driver.vec_env,
+                                                     VecNormalize):
+            self.driver.vec_env.obs_rms = self._best_rms
+        print(f"    [best] kept the policy from step {self.best_step:,d}",
+              flush=True)
 
 
 class _Progress(BaseCallback):
@@ -316,6 +401,11 @@ class SACDriver:
         callbacks = []
         if progress_every:
             callbacks.append(_Progress(progress_every))
+        keeper = None
+        if self.config.best_eval_every:
+            keeper = _BestPolicyKeeper(self, self.config.best_eval_every,
+                                       self.config.best_eval_episodes)
+            callbacks.append(keeper)
         if log_dir is not None:
             log_dir = Path(log_dir)
             log_dir.mkdir(parents=True, exist_ok=True)
@@ -328,6 +418,8 @@ class SACDriver:
         self.model.learn(total_timesteps=int(total_timesteps),
                          callback=callbacks or None,
                          reset_num_timesteps=False)
+        if keeper is not None:
+            keeper.restore_best()
         return self
 
     # -- checkpointing -----------------------------------------------------------

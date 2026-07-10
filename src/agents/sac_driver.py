@@ -86,7 +86,12 @@ def benign_training_dr() -> DomainRandomizationConfig:
         aero_level_range=(0.5, 0.5),
         brake_bias_range=(0.58, 0.58),
         final_drive_range=(3.0, 3.0),
-        start_speed_range=(20.0, 45.0),
+        # Spawn-at-speed up to 65 m/s (234 km/h): high-speed corner approaches
+        # are exactly the states a from-slow policy explores last (and died in
+        # every probe run); seeding them directly teaches brake-or-crash from
+        # step one. Fast spawns inside tight corners are unsavable — that is
+        # acceptable replay noise, priced in.
+        start_speed_range=(20.0, 65.0),
         start_lateral_range=(-1.0, 1.0),
         start_heading_error_range=(-0.03, 0.03),
         randomize_start_s=True,
@@ -143,11 +148,11 @@ class SACDriverConfig:
     gamma: float = 0.995           # 16 s horizon at 12.5 Hz control
     train_freq: int = 1
     gradient_steps: int = 1
-    ent_coef: str | float = 0.02   # fixed SAC temperature. "auto" settled at
-    #   alpha ~ 0.13 on this env — the entropy target (-6) forces noise into a
-    #   precision task, collapsing late-training returns (1186 -> 464 over the
-    #   last 30k steps of a 150k run). A small fixed alpha keeps exploration
-    #   without mandating it.
+    ent_coef: str | float = "auto"  # SAC temperature auto-tuning. It settles
+    #   at alpha ~ 0.13 here and the mandated noise degrades the LIVE policy
+    #   after it peaks — but a fixed low alpha (0.02) was tried and starved
+    #   exploration (slower learning, never found corner-1 braking). Keep the
+    #   exploration; the best-policy keeper preserves the deterministic peak.
     net_arch: tuple = (256, 256)   # actor & critic MLP widths
 
     # --- control & env interface ---

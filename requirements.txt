@@ -8,5 +8,10 @@ fastf1
 # Layer 4 — gym environment wrapper
 gymnasium
 
+# Layer 5 — SAC driver agent (torch: the CPU build is enough — on a no-GPU
+# box: pip install torch --index-url https://download.pytorch.org/whl/cpu)
+stable-baselines3
+torch
+
 # Test runner (tests also run standalone: python tests/test_track.py)
 pytest

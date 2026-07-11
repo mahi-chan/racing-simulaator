@@ -1,0 +1,669 @@
+{
+  "stage_names": [
+    "A_wide_benign",
+    "B_true_edges",
+    "C_weather",
+    "D_full_dr"
+  ],
+  "stage_idx": 4,
+  "steps_in_stage": 0,
+  "total_steps": 1750000,
+  "seed": 42,
+  "budget_scale": 1.0,
+  "tensorboard": true,
+  "env_stage": "D_full_dr",
+  "stage_best_keys": {
+    "A_wide_benign": [
+      0,
+      -300.0,
+      1962.814050913346
+    ],
+    "B_true_edges": [
+      0,
+      -300.0,
+      2203.418028101603
+    ],
+    "C_weather": [
+      0,
+      -300.0,
+      764.2553697128589
+    ],
+    "D_full_dr": [
+      0,
+      -300.0,
+      764.2553697128589
+    ]
+  },
+  "history": [
+    {
+      "event": "enter_stage",
+      "stage": "A_wide_benign",
+      "total_steps": 0,
+      "steps_in_stage": 0,
+      "wall_s": 0.0,
+      "details": null
+    },
+    {
+      "event": "best",
+      "stage": "A_wide_benign",
+      "total_steps": 0,
+      "steps_in_stage": 0,
+      "wall_s": 0.4,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          34.729
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 0,
+            "spin": 0,
+            "mean_progress_m": 34.7,
+            "mean_return": -90.4
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "A_wide_benign",
+      "total_steps": 25000,
+      "steps_in_stage": 25000,
+      "wall_s": 207.5,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          413.097
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 3,
+            "spin": 2,
+            "mean_progress_m": 413.1,
+            "mean_return": 297.8
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "A_wide_benign",
+      "total_steps": 50000,
+      "steps_in_stage": 50000,
+      "wall_s": 562.7,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          820.763
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 4,
+            "spin": 0,
+            "mean_progress_m": 820.8,
+            "mean_return": 709.7
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "A_wide_benign",
+      "total_steps": 75000,
+      "steps_in_stage": 75000,
+      "wall_s": 903.9,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          909.656
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 3,
+            "spin": 2,
+            "mean_progress_m": 909.7,
+            "mean_return": 831.1
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "A_wide_benign",
+      "total_steps": 125000,
+      "steps_in_stage": 125000,
+      "wall_s": 1587.5,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          940.318
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 0,
+            "spin": 2,
+            "mean_progress_m": 940.3,
+            "mean_return": 851.6
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "A_wide_benign",
+      "total_steps": 200000,
+      "steps_in_stage": 200000,
+      "wall_s": 2625.8,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          1670.384
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 4,
+            "spin": 1,
+            "mean_progress_m": 1670.4,
+            "mean_return": 1605.4
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "A_wide_benign",
+      "total_steps": 250000,
+      "steps_in_stage": 250000,
+      "wall_s": 3304.2,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          1962.814
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 5,
+            "spin": 0,
+            "mean_progress_m": 1962.8,
+            "mean_return": 1907.2
+          }
+        }
+      }
+    },
+    {
+      "event": "budget_exhausted",
+      "stage": "A_wide_benign",
+      "total_steps": 250000,
+      "steps_in_stage": 250000,
+      "wall_s": 3304.2,
+      "details": {
+        "gate_met": false,
+        "checks": [
+          {
+            "group": "any_of",
+            "kind": "laps",
+            "target": "spread",
+            "threshold": 1,
+            "value": 0.0,
+            "passed": false
+          },
+          {
+            "group": "any_of",
+            "kind": "progress",
+            "target": "spread",
+            "threshold": 2500.0,
+            "value": 1962.81,
+            "passed": false
+          }
+        ]
+      }
+    },
+    {
+      "event": "enter_stage",
+      "stage": "B_true_edges",
+      "total_steps": 250000,
+      "steps_in_stage": 0,
+      "wall_s": 3304.3,
+      "details": null
+    },
+    {
+      "event": "best",
+      "stage": "B_true_edges",
+      "total_steps": 250000,
+      "steps_in_stage": 0,
+      "wall_s": 3308.4,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          1957.909
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 5,
+            "spin": 0,
+            "mean_progress_m": 1957.9,
+            "mean_return": 1913.1
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "B_true_edges",
+      "total_steps": 275000,
+      "steps_in_stage": 25000,
+      "wall_s": 3647.7,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          1998.919
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 5,
+            "spin": 0,
+            "mean_progress_m": 1998.9,
+            "mean_return": 1967.8
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "B_true_edges",
+      "total_steps": 450000,
+      "steps_in_stage": 200000,
+      "wall_s": 6010.9,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          2039.929
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 4,
+            "spin": 1,
+            "mean_progress_m": 2039.9,
+            "mean_return": 2018.9
+          }
+        }
+      }
+    },
+    {
+      "event": "best",
+      "stage": "B_true_edges",
+      "total_steps": 500000,
+      "steps_in_stage": 250000,
+      "wall_s": 6683.9,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          2203.418
+        ],
+        "evals": {
+          "spread": {
+            "episodes": 5,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 4,
+            "spin": 1,
+            "mean_progress_m": 2203.4,
+            "mean_return": 2185.2
+          }
+        }
+      }
+    },
+    {
+      "event": "budget_exhausted",
+      "stage": "B_true_edges",
+      "total_steps": 650000,
+      "steps_in_stage": 400000,
+      "wall_s": 8587.8,
+      "details": {
+        "gate_met": false,
+        "checks": [
+          {
+            "group": "all_of",
+            "kind": "laps",
+            "target": "spread",
+            "threshold": 3,
+            "value": 0.0,
+            "passed": false
+          },
+          {
+            "group": "all_of",
+            "kind": "canonical_lap",
+            "target": "spread",
+            "threshold": 1.0,
+            "value": 0.0,
+            "passed": false
+          }
+        ]
+      }
+    },
+    {
+      "event": "enter_stage",
+      "stage": "C_weather",
+      "total_steps": 650000,
+      "steps_in_stage": 0,
+      "wall_s": 8588.3,
+      "details": null
+    },
+    {
+      "event": "best",
+      "stage": "C_weather",
+      "total_steps": 650000,
+      "steps_in_stage": 0,
+      "wall_s": 8594.2,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          764.255
+        ],
+        "evals": {
+          "V1_benign": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 2,
+            "spin": 1,
+            "mean_progress_m": 3137.3,
+            "mean_return": 3136.9
+          },
+          "V2_soft_light": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 3,
+            "spin": 0,
+            "mean_progress_m": 30.1,
+            "mean_return": -70.3
+          },
+          "V3_hard_heavy": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 0,
+            "spin": 0,
+            "mean_progress_m": 147.0,
+            "mean_return": 51.5
+          },
+          "V4_damp_inters": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 3,
+            "spin": 0,
+            "mean_progress_m": 49.7,
+            "mean_return": -55.8
+          },
+          "V5_wet_wets": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 3,
+            "spin": 0,
+            "mean_progress_m": 457.2,
+            "mean_return": 365.5
+          }
+        }
+      }
+    },
+    {
+      "event": "budget_exhausted",
+      "stage": "C_weather",
+      "total_steps": 1150000,
+      "steps_in_stage": 500000,
+      "wall_s": 14506.5,
+      "details": {
+        "gate_met": false,
+        "checks": [
+          {
+            "group": "all_of",
+            "kind": "laps",
+            "target": "V1_benign",
+            "threshold": 1,
+            "value": 0.0,
+            "passed": false
+          },
+          {
+            "group": "all_of",
+            "kind": "laps",
+            "target": "V2_soft_light",
+            "threshold": 1,
+            "value": 0.0,
+            "passed": false
+          },
+          {
+            "group": "all_of",
+            "kind": "laps",
+            "target": "V3_hard_heavy",
+            "threshold": 1,
+            "value": 0.0,
+            "passed": false
+          },
+          {
+            "group": "all_of",
+            "kind": "laps",
+            "target": "V4_damp_inters",
+            "threshold": 1,
+            "value": 0.0,
+            "passed": false
+          },
+          {
+            "group": "all_of",
+            "kind": "progress",
+            "target": "V5_wet_wets",
+            "threshold": 1500.0,
+            "value": 61.39,
+            "passed": false
+          }
+        ]
+      }
+    },
+    {
+      "event": "enter_stage",
+      "stage": "D_full_dr",
+      "total_steps": 1150000,
+      "steps_in_stage": 0,
+      "wall_s": 14506.6,
+      "details": null
+    },
+    {
+      "event": "best",
+      "stage": "D_full_dr",
+      "total_steps": 1150000,
+      "steps_in_stage": 0,
+      "wall_s": 14512.8,
+      "details": {
+        "key": [
+          0.0,
+          -300.0,
+          764.255
+        ],
+        "evals": {
+          "V1_benign": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 2,
+            "spin": 1,
+            "mean_progress_m": 3137.3,
+            "mean_return": 3136.9
+          },
+          "V2_soft_light": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 3,
+            "spin": 0,
+            "mean_progress_m": 30.1,
+            "mean_return": -70.3
+          },
+          "V3_hard_heavy": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 0,
+            "spin": 0,
+            "mean_progress_m": 147.0,
+            "mean_return": 51.5
+          },
+          "V4_damp_inters": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 3,
+            "spin": 0,
+            "mean_progress_m": 49.7,
+            "mean_return": -55.8
+          },
+          "V5_wet_wets": {
+            "episodes": 3,
+            "laps": 0,
+            "mean_lap_time_s": null,
+            "time_to_lap_capped_s": 300.0,
+            "off_track": 3,
+            "spin": 0,
+            "mean_progress_m": 457.2,
+            "mean_return": 365.5
+          }
+        }
+      }
+    },
+    {
+      "event": "budget_exhausted",
+      "stage": "D_full_dr",
+      "total_steps": 1750000,
+      "steps_in_stage": 600000,
+      "wall_s": 23578.8,
+      "details": {
+        "gate_met": null,
+        "checks": []
+      }
+    }
+  ],
+  "finished": true,
+  "wall_seconds": 23586.1,
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "gymnasium": "1.3.0",
+    "stable_baselines3": "2.9.0",
+    "torch": "2.13.0+cu130"
+  },
+  "final_panel": {
+    "V1_benign": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 2,
+      "spin": 1,
+      "mean_progress_m": 3137.3,
+      "mean_return": 3136.9
+    },
+    "V2_soft_light": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 3,
+      "spin": 0,
+      "mean_progress_m": 30.1,
+      "mean_return": -70.3
+    },
+    "V3_hard_heavy": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 0,
+      "spin": 0,
+      "mean_progress_m": 147.0,
+      "mean_return": 51.5
+    },
+    "V4_damp_inters": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 3,
+      "spin": 0,
+      "mean_progress_m": 49.7,
+      "mean_return": -55.8
+    },
+    "V5_wet_wets": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 3,
+      "spin": 0,
+      "mean_progress_m": 457.2,
+      "mean_return": 365.5
+    }
+  }
+}

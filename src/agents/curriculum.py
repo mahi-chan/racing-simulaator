@@ -517,6 +517,14 @@ class CurriculumTrainer:
         self._record("best", stage.name,
                      {"key": [round(float(k), 3) for k in key],
                       "evals": {n: _summarize(r) for n, r in evals.items()}})
+        # refresh the checkpointed state too: a crash before the next chunk's
+        # checkpoint must not forget this snapshot (the weights above are
+        # already on disk; counters are unchanged since the last checkpoint)
+        for state_file in (self.out / "checkpoint" / "curriculum_state.json",
+                           self.out / "curriculum_state.json"):
+            if state_file.parent.exists():
+                state_file.write_text(json.dumps(self._state_dict(),
+                                                 indent=2))
         print(f"    [best] {stage.name} @ {self.total_steps:,d} steps: "
               f"laps {int(key[0])}, time-to-lap {-key[1]:.1f} s, "
               f"progress {key[2]:.0f} m", flush=True)

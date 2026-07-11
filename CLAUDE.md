@@ -34,8 +34,8 @@ weaken thresholds to force a pass. If a spec is unclear, ask before coding.
    offline (T8 real-Silverstone check still needs one online run).
 3. Conditions model (tire compounds, degradation, fuel burn, weather) — ✅ DONE, validated.
 4. Gym environment wrapper (obs / action / reward / termination + domain randomization) — ✅ DONE, validated.
-5. SAC driver agent — ▶ NEXT.
-6. Training loop + curriculum + domain randomization (generalist driver) — pending.
+5. SAC driver agent — ✅ DONE, validated (full-lap acceptance deferred to Layer 6 by design).
+6. Training loop + curriculum + domain randomization (generalist driver) — ▶ NEXT.
 7. Telemetry calibration & validation — pending (justifies "no physical testing").
 8. Setup optimization (best setup per track+weather) — pending (the deliverable).
 9. Showcase & reporting — optional.
@@ -99,6 +99,25 @@ finite; components sum exactly; seed-bit-reproducible; pursuit driver laps 140.7
 +0.7 s; 3,742 steps/s (floor 2000). Emergent, kept: slicks run cold after the long
 straight (soft ≈ wet-wet pace with a cautious driver) — L7 calibration target.
 
+## Layer 5 — SAC driver agent (built)
+
+`src/agents/sac_driver.py` + `scripts/train.py`, tested by `tests/test_sac.py`
+(pytest or standalone; its T7 trains 150k steps ≈ 40 min CPU). `SACDriver` wraps SB3
+SAC on `F1Env`: `ActionRepeat` (50 Hz physics → 12.5 Hz control, rewards + named
+components summed), VecNormalize obs z-score (stats saved with every checkpoint,
+frozen at eval), Dummy/Subproc vec envs, every knob in `SACDriverConfig`. Trains on
+a benign preset (dry/medium/fixed mid setup, spawn-at-speed 20–65 m/s anywhere on
+track — degenerate Layer 4 DR ranges, no env changes). Auto-entropy (α settles
+≈0.13) plus a best-policy keeper: exploration noise degrades the live policy past
+its peak, so `train()` returns the best deterministic evaluator (policy + paired
+obs stats); a fixed low α was tried and starved exploration. Checkpoints round-trip
+bit-identically; seed-reproducible. `evaluate()` reports lap time / avg / max speed
+/ progress / off-track with pinned conditions and spread rolling starts. Validated
+7/7: 150k-step smoke → best policy (step 120k) averages 1774 m/episode (best
+3102 m) at 102–176 km/h, 41× random's progress, off-track/km 0.56 vs 18.39. No
+full lap yet at smoke scale (extrapolates to 300–600k steps): full-lap + lap-time
+acceptance is a recorded Layer 6 obligation, along with replay-buffer persistence.
+
 ## Project structure
 
 ```
@@ -117,11 +136,15 @@ f1-racing-rl/
 ## Environment & commands
 
 - Python 3.10+. Use a venv. Deps added per layer, kept minimal:
-  L1 `numpy` · L2 `+fastf1 scipy` · L3+ (same) · L4–6 `+gymnasium stable-baselines3 sb3-contrib torch` · L8 `+optuna`
+  L1 `numpy` · L2 `+fastf1 scipy` · L3 (same) · L4 `+gymnasium` · L5 `+stable-baselines3
+  torch` · L6 `+tensorboard` (`sb3-contrib` deferred until a layer imports it) · L8 `+optuna`
 - Run Layer 1 validation: `python tests/validate_vehicle.py`
 - Run Layer 2 validation: `python tests/test_track.py` (or `pytest tests/`)
 - Run Layer 3 validation: `python tests/test_conditions.py`
 - Run Layer 4 validation: `python tests/test_env.py`
+- Run Layer 5 validation: `python tests/test_sac.py` (T7 trains 150k steps, ~40 min)
+- Run Layer 6 validation: `python tests/test_train.py` (T7/T8 need the trained
+  generalist — `python scripts/train.py --recipe l6_generalist`)
 
 ## Conventions (important)
 
@@ -136,6 +159,8 @@ f1-racing-rl/
 
 ## Current task
 
-Layer 5 — see `LAYER_SPECS.md` § Layer 5: SAC driver agent. Plan in Claude.ai chat
-before implementing here. Leftover from Layer 2: run `python tests/test_track.py`
-once online to exercise T8 (real Silverstone reconstruction).
+Layer 6 — see `LAYER_SPECS.md` § Layer 6: training loop + curriculum + domain
+randomization (generalist driver). Plan approved in chat. Layer 5 obligations land
+here: full-lap + lap-time acceptance, replay-buffer persistence. Leftover from
+Layer 2: run `python tests/test_track.py` once online to exercise T8 (real
+Silverstone reconstruction).

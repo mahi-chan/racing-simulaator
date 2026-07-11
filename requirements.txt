@@ -13,5 +13,8 @@ gymnasium
 stable-baselines3
 torch
 
+# Layer 6 — training loop, curriculum, domain randomization (spec: tensorboard logging)
+tensorboard
+
 # Test runner (tests also run standalone: python tests/test_track.py)
 pytest

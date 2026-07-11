@@ -25,10 +25,16 @@ Design notes:
     scaling. The running stats are saved with every checkpoint and are used
     frozen at evaluation time.
   * Two departures from vanilla SAC defaults, both forced by evidence from
-    50k/150k-step smoke runs on this env: a FIXED low temperature (auto-tuned
-    alpha settled at ~0.13, mandating action noise that collapsed a peaked
-    policy), and a best-policy keeper (train() returns the best deterministic
-    evaluator seen, not the last policy).
+    50k/150k-step smoke runs on this env: a best-policy keeper — auto-tuned
+    entropy settles at alpha ~ 0.13 here and the mandated action noise
+    degrades the LIVE policy after it peaks, so train() returns the best
+    deterministic evaluator seen, not the last policy (a fixed low alpha was
+    tried instead and starved exploration) — and spawn-at-speed training
+    starts (`benign_training_dr`).
+  * Layer 6 builds on this file without changing its behavior: save/load can
+    persist the replay buffer (`include_buffer=True`) and
+    `swap_env_config()` swaps the training env mid-run for curriculum stage
+    transitions, carrying the VecNormalize statistics across the swap.
   * Every knob lives in `SACDriverConfig`; nothing is hard-coded. Values are
     standard SAC starting points, tuned only as far as the Layer 5 smoke-train
     acceptance demanded.
@@ -292,6 +298,11 @@ class _Progress(BaseCallback):
         self.every = max(int(every), 1)
         self._next = self.every
 
+    def _on_training_start(self) -> None:
+        # anchor to the current counter so resumed/chunked training doesn't
+        # fire a print per step while catching up
+        self._next = self.num_timesteps + self.every
+
     def _on_step(self) -> bool:
         if self.num_timesteps >= self._next:
             self._next += self.every
@@ -367,18 +378,7 @@ class SACDriver:
         self._track = track
         cfg = self.config
 
-        fns = [_make_env_fn(self.env_config, cfg.action_repeat, track,
-                            cfg.seed, i) for i in range(cfg.n_envs)]
-        use_subproc = (cfg.vec_env_cls == "subproc"
-                       or (cfg.vec_env_cls == "auto" and cfg.n_envs > 1))
-        vec = SubprocVecEnv(fns) if (use_subproc and cfg.n_envs > 1) \
-            else DummyVecEnv(fns)
-        if cfg.check_nan:
-            vec = VecCheckNan(vec, raise_exception=True)
-        if cfg.normalize_obs or cfg.normalize_reward:
-            vec = VecNormalize(vec, training=True, norm_obs=cfg.normalize_obs,
-                               norm_reward=cfg.normalize_reward,
-                               clip_obs=cfg.vecnorm_clip_obs, gamma=cfg.gamma)
+        vec = self._build_vec_env()
         self.vec_env = vec
 
         self.model = SAC(
@@ -397,6 +397,43 @@ class SACDriver:
             device=cfg.device,
             verbose=0,
         )
+
+    def _build_vec_env(self):
+        """Vec stack from the current `env_config`:
+        (Subproc|Dummy)VecEnv -> VecCheckNan -> VecNormalize (fresh stats)."""
+        cfg = self.config
+        fns = [_make_env_fn(self.env_config, cfg.action_repeat, self._track,
+                            cfg.seed, i) for i in range(cfg.n_envs)]
+        use_subproc = (cfg.vec_env_cls == "subproc"
+                       or (cfg.vec_env_cls == "auto" and cfg.n_envs > 1))
+        vec = SubprocVecEnv(fns) if (use_subproc and cfg.n_envs > 1) \
+            else DummyVecEnv(fns)
+        if cfg.check_nan:
+            vec = VecCheckNan(vec, raise_exception=True)
+        if cfg.normalize_obs or cfg.normalize_reward:
+            vec = VecNormalize(vec, training=True, norm_obs=cfg.normalize_obs,
+                               norm_reward=cfg.normalize_reward,
+                               clip_obs=cfg.vecnorm_clip_obs, gamma=cfg.gamma)
+        return vec
+
+    def swap_env_config(self, env_config: EnvConfig) -> None:
+        """Swap the training environment mid-run (curriculum stage change).
+
+        Rebuilds the vec stack from `env_config` and transplants the
+        VecNormalize running statistics so observation scaling stays
+        continuous across the swap; SB3 resets the new env on the next
+        `learn()` call. The replay buffer is intentionally kept — transitions
+        from the previous stage age out of the buffer window naturally.
+        """
+        old_rms = (self.vec_env.obs_rms
+                   if isinstance(self.vec_env, VecNormalize) else None)
+        self.vec_env.close()
+        self.env_config = env_config
+        vec = self._build_vec_env()
+        if old_rms is not None and isinstance(vec, VecNormalize):
+            vec.obs_rms = old_rms
+        self.vec_env = vec
+        self.model.set_env(vec)
 
     # -- training --------------------------------------------------------------
     def train(self, total_timesteps: int, log_dir: str | Path | None = None,
@@ -428,11 +465,18 @@ class SACDriver:
         return self
 
     # -- checkpointing -----------------------------------------------------------
-    def save(self, path: str | Path) -> Path:
-        """Write model.zip + vecnormalize.pkl + config.json into `path`."""
+    def save(self, path: str | Path, include_buffer: bool = False) -> Path:
+        """Write model.zip + vecnormalize.pkl + config.json into `path`.
+
+        `include_buffer` also writes replay_buffer.pkl (~110 MB at the
+        default 300k capacity) so a resumed run continues from a warm buffer
+        instead of refilling it — Layer 6's checkpoint/resume contract.
+        """
         d = Path(path)
         d.mkdir(parents=True, exist_ok=True)
         self.model.save(str(d / "model.zip"))
+        if include_buffer:
+            self.model.save_replay_buffer(str(d / "replay_buffer.pkl"))
         if isinstance(self.vec_env, VecNormalize):
             self.vec_env.save(str(d / "vecnormalize.pkl"))
         blob = {"sac": dataclasses.asdict(self.config),
@@ -444,9 +488,9 @@ class SACDriver:
     def load(cls, path: str | Path, track: Track | None = None) -> "SACDriver":
         """Rebuild a driver from `save()` output; training can continue.
 
-        The replay buffer is not persisted (SB3 keeps it separate); resumed
-        training refills it — fine for Layer 5, revisit in Layer 6 if long
-        Colab runs need buffer persistence.
+        If `save(include_buffer=True)` wrote replay_buffer.pkl, it is
+        restored too, so resumed training continues from a warm buffer;
+        otherwise the buffer refills from scratch.
         """
         d = Path(path)
         blob = json.loads((d / "config.json").read_text())
@@ -460,6 +504,9 @@ class SACDriver:
             driver.vec_env.training = True
         driver.model = SAC.load(str(d / "model.zip"), env=driver.vec_env,
                                 device=config.device)
+        buf = d / "replay_buffer.pkl"
+        if buf.exists():
+            driver.model.load_replay_buffer(str(buf))
         return driver
 
     # -- inference / evaluation --------------------------------------------------
@@ -477,7 +524,8 @@ class SACDriver:
     def evaluate(self, n_episodes: int = 5, options: dict | None = None,
                  seed: int = 123, deterministic: bool = True,
                  policy: str = "model",
-                 spread_starts: bool = False) -> EvalReport:
+                 spread_starts: bool = False,
+                 env_config: EnvConfig | None = None) -> EvalReport:
         """Run pinned evaluation episodes and report real driving numbers.
 
         `options` pins the env's reset (default BENIGN_EVAL). With
@@ -486,12 +534,18 @@ class SACDriver:
         (the same trajectory n times measures nothing). A DNF's
         `time_to_lap_capped` is the episode time cap, which makes "reduces
         lap time vs a random policy" well-defined when random never laps.
+        `env_config` overrides the env the episodes run in (default: the
+        training env config) — needed to pin a weather the training DR
+        tables don't cover, since Layer 4's reset draws its defaults from
+        those tables even when `options` pin every value.
         """
         if policy not in ("model", "random"):
             raise ValueError(f"policy must be 'model' or 'random': {policy!r}")
         base_options = BENIGN_EVAL if options is None else options
         track = self._track if self._track is not None else Track.from_synthetic()
-        base = F1Env(track=track, config=self.env_config)
+        base = F1Env(track=track,
+                     config=self.env_config if env_config is None
+                     else env_config)
         env: gym.Env = (ActionRepeat(base, self.config.action_repeat)
                         if self.config.action_repeat > 1 else base)
         cap = base.config.max_steps * base.config.dt  # episode time limit (s)

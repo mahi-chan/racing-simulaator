@@ -33,7 +33,8 @@ from src.agents.curriculum import (HELD_OUT_PANEL, VALIDATION_PANEL,
                                    l6_default_curriculum, pinned_dr,
                                    render_markdown, validate_curriculum)
 from src.agents.sac_driver import (BENIGN_EVAL, SMOKE_EVAL, SACDriver,
-                                   SACDriverConfig, benign_training_dr,
+                                   SACDriverConfig, SimplifiedActions,
+                                   benign_training_dr,
                                    benign_training_env_config)
 from src.envs.f1_env import DomainRandomizationConfig, EnvConfig, F1Env
 from src.tracks.track import Track
@@ -74,13 +75,26 @@ def test_t1_curriculum_config_sanity():
     validate_curriculum(stages)  # raises on malformed recipes
     assert len(stages) >= 3
 
-    # the wide-track scaffold comes off: stage A is wider than the final stage
-    assert (stages[0].env_config.off_track_margin
-            > stages[-1].env_config.off_track_margin)
+    # every stage trains on the real track edges (the v1 wide-margin
+    # scaffold was measured useless and dropped)
+    for s in stages:
+        assert s.env_config.off_track_margin == EnvConfig().off_track_margin
 
-    # full randomization is actually reached: final stage DR == Layer 4 default
+    # the spec's "full randomization" is reached on the setup + weather axes:
+    # final stage == Layer 4 defaults for every condition range. Compounds
+    # are weather-MATCHED (one per weather) — the documented post-Layer-7
+    # descope while tire-temperature physics is a placeholder.
     ref = DomainRandomizationConfig()
-    assert stages[-1].env_config.dr == ref
+    last = stages[-1].env_config.dr
+    assert last.weather_probs == ref.weather_probs
+    assert last.rain_intensity_range == ref.rain_intensity_range
+    assert last.track_temp_range == ref.track_temp_range
+    assert last.fuel_range == ref.fuel_range
+    assert last.aero_level_range == ref.aero_level_range
+    assert last.brake_bias_range == ref.brake_bias_range
+    assert last.final_drive_range == ref.final_drive_range
+    for w, table in last.compound_probs.items():
+        assert len(table) == 1 and table[0][1] == 1.0, (w, table)
 
     # every stage's CONDITION ranges live inside Layer 4's default bounds
     # (start-pose ranges are exploration protocol, not conditions — exempt)
@@ -164,7 +178,9 @@ def test_t2_domain_randomization_every_reset():
 
     assert {s["weather"] for s in setups} == set(ref.weather_probs), \
         "200 resets should draw every weather (probs 0.60/0.25/0.15)"
-    assert len({s["compound"] for s in setups}) >= 4
+    # matched compounds: exactly one per weather, so three across 200 draws
+    assert ({s["compound"] for s in setups}
+            == {"medium", "intermediate", "wet"})
     fuels = [s["fuel"] for s in setups]
     aeros = [s["aero_level"] for s in setups]
     biases = [s["brake_bias"] for s in setups]
@@ -327,7 +343,7 @@ def test_t6_evaluators_toy_scale():
     d = SACDriver(tiny_cfg(), track=TRACK)  # untrained — machinery only
 
     panel = evaluate_panel(d, VALIDATION_PANEL[:2], episodes=2, seed=99)
-    assert set(panel) == {"V1_benign", "V2_soft_light"}
+    assert set(panel) == {c.name for c in VALIDATION_PANEL[:2]}
     for rep in panel.values():
         assert len(rep.episodes) == 2
         for e in rep.episodes:
@@ -366,12 +382,50 @@ def test_t6_evaluators_toy_scale():
 
 
 # ---------------------------------------------------------------------------
+# T6b — the simplified action space maps exactly onto Layer 4's interface
+# ---------------------------------------------------------------------------
+def test_t6b_action_adapter():
+    env = SimplifiedActions(F1Env(track=TRACK,
+                                  config=benign_training_env_config()))
+    assert env.action_space.shape == (2,)
+    env.reset(seed=3, options=dict(BENIGN_EVAL))
+    veh = env.unwrapped.vehicle
+
+    # full drive: throttle only, ERS rides the drive axis, DRS requested,
+    # gear encodes Layer 1's auto_gear for the live speed
+    a6 = env.action(np.array([0.2, 1.0], dtype=np.float32))
+    assert a6.shape == (6,)
+    assert a6[0] == 1.0 and a6[1] == -1.0            # throttle 1, brake 0
+    assert abs(float(a6[2]) - 0.2) < 1e-6            # steer passthrough
+    g = veh.auto_gear(veh.state.vx)
+    assert int(round(1.0 + 3.5 * (float(a6[3]) + 1.0))) == g
+    assert a6[4] == 1.0 and a6[5] == 1.0             # ERS deploy, DRS on
+
+    # full brake: mutually exclusive with throttle, no ERS deploy
+    a6 = env.action(np.array([-0.5, -1.0], dtype=np.float32))
+    assert a6[0] == -1.0 and a6[1] == 1.0 and a6[4] == -1.0
+    env.close()
+
+    # end-to-end through the driver: 2-dim policy trains and evaluates
+    d = SACDriver(tiny_cfg(simplified_actions=True), track=TRACK)
+    assert d.model.action_space.shape == (2,)
+    d.train(300)
+    rep = d.evaluate(n_episodes=1, options=SMOKE_EVAL, seed=5)
+    assert rep.episodes[0].termination in TERMINATIONS
+    for name, p in d.model.policy.named_parameters():
+        assert np.isfinite(p.detach().cpu().numpy()).all(), name
+    d.close()
+
+
+# ---------------------------------------------------------------------------
 # T7 — the trained generalist drives (artifact-gated; Layer 5's deferred
 #      full-lap + lap-time acceptance lands here)
 # ---------------------------------------------------------------------------
 def _find_generalist() -> Path | None:
-    for cand in (os.environ.get("L6_DRIVER_DIR"),
-                 "models/l6_generalist", "runs/l6_generalist/final"):
+    # models/l6_generalist is the ACCEPTED artifact path; attempt dirs and
+    # in-flight runs are reachable via L6_DRIVER_DIR only, so a failed or
+    # stale run can never masquerade as the accepted driver.
+    for cand in (os.environ.get("L6_DRIVER_DIR"), "models/l6_generalist"):
         if cand and (Path(cand) / "model.zip").exists():
             return Path(cand)
     return None
@@ -434,8 +488,7 @@ def test_t7_generalist_drives():
 def test_t8_documented_comparison():
     report_path = None
     d_dir = _find_generalist()
-    candidates = [Path("models/l6_generalist/run_report.json"),
-                  Path("runs/l6_generalist/final/run_report.json")]
+    candidates = [Path("models/l6_generalist/run_report.json")]
     if d_dir is not None:
         candidates.insert(0, d_dir / "run_report.json")
     for cand in candidates:
@@ -444,7 +497,7 @@ def test_t8_documented_comparison():
             break
     if report_path is None:
         raise SkipTest("no run report yet — run: python scripts/train.py "
-                       "--compare runs/l6_generalist/final")
+                       "--compare <driver_dir>")
     report = json.loads(report_path.read_text())
     comp = report.get("generalist_vs_specialists")
     if not comp:
@@ -483,6 +536,7 @@ TESTS = [
     test_t4_checkpoint_resume_cleanly,
     test_t5_env_swap_continuity,
     test_t6_evaluators_toy_scale,
+    test_t6b_action_adapter,
     test_t7_generalist_drives,
     test_t8_documented_comparison,
 ]

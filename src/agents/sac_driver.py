@@ -138,6 +138,57 @@ class ActionRepeat(gym.Wrapper):
         return obs, total, terminated, truncated, info
 
 
+class SimplifiedActions(gym.ActionWrapper):
+    """Reduce Layer 4's 6-dim action interface to the 2 dims first-lap
+    learning actually needs: [steer, drive].
+
+    drive >= 0 is throttle, drive < 0 is brake (mutually exclusive by
+    construction); the gearbox is automatic — Layer 1's max-force
+    `auto_gear` at the live speed, recomputed every physics step; ERS
+    deploys proportionally to positive drive (harvest happens on braking in
+    the env regardless); DRS is always requested and the env's curvature
+    gate decides where it opens. Layer 6 restructure decision, on evidence:
+    the 1.75M-step attempt-1 run (models/l6_generalist_attempt1) stalled at
+    58% of a lap with the 6-dim space, and published track-RL uses exactly
+    this reduced space. The env still simulates gearbox/ERS/DRS physics —
+    only the policy's STRATEGIC control of them is deferred (post-Layer-7
+    work, when calibrated physics make those axes worth their exploration
+    cost). Observations are untouched.
+    """
+
+    def __init__(self, env: gym.Env):
+        super().__init__(env)
+        self.action_space = gym.spaces.Box(-1.0, 1.0, (2,), np.float32)
+
+    def action(self, act):
+        steer = float(act[0])
+        drive = float(act[1])
+        throttle = max(drive, 0.0)
+        brake = max(-drive, 0.0)
+        vehicle = self.env.unwrapped.vehicle
+        gear = vehicle.auto_gear(vehicle.state.vx)
+        # inverse of F1Env.step's decoding: duty d -> 2d-1, gear g -> (g-1)/3.5-1
+        return np.array([2.0 * throttle - 1.0,
+                         2.0 * brake - 1.0,
+                         steer,
+                         (gear - 1.0) / 3.5 - 1.0,
+                         2.0 * throttle - 1.0,  # ERS rides the drive axis
+                         1.0],                  # DRS: always request
+                        dtype=np.float32)
+
+
+def build_episode_env(track: Track, env_config: EnvConfig,
+                      config: "SACDriverConfig") -> gym.Env:
+    """The per-episode env stack the driver trains AND evaluates on:
+    F1Env -> (SimplifiedActions) -> (ActionRepeat)."""
+    env: gym.Env = F1Env(track=track, config=env_config)
+    if config.simplified_actions:
+        env = SimplifiedActions(env)
+    if config.action_repeat > 1:
+        env = ActionRepeat(env, config.action_repeat)
+    return env
+
+
 # ----------------------------------------------------------------------------
 # Config — every Layer 5 knob in one labeled place (spec: none hard-coded)
 # ----------------------------------------------------------------------------
@@ -163,6 +214,9 @@ class SACDriverConfig:
 
     # --- control & env interface ---
     action_repeat: int = 4        # env steps per policy action (1 disables)
+    simplified_actions: bool = False  # policy = [steer, drive] via
+    #   SimplifiedActions (auto-gear, ERS on the drive axis, DRS always
+    #   requested). Layer 6 restructure: 6 dims stalled at 58% of a lap.
     n_envs: int = 1
     vec_env_cls: str = "auto"     # "auto" (subproc when n_envs>1) | "dummy" | "subproc"
     normalize_obs: bool = True    # VecNormalize running z-score (stats checkpointed)
@@ -347,17 +401,14 @@ def _env_config_from_dict(blob: dict) -> EnvConfig:
     return EnvConfig(reward=reward, dr=dr, **kw)
 
 
-def _make_env_fn(env_config: EnvConfig, repeat: int, track: Track | None,
-                 seed: int, rank: int):
+def _make_env_fn(env_config: EnvConfig, driver_config: "SACDriverConfig",
+                 track: Track | None, seed: int, rank: int):
     """Env factory for vec envs. With track=None each worker builds its own
     synthetic track (needed for subprocess workers)."""
 
     def _init():
         t = track if track is not None else Track.from_synthetic()
-        env: gym.Env = F1Env(track=t, config=env_config)
-        if repeat > 1:
-            env = ActionRepeat(env, repeat)
-        env = Monitor(env)
+        env = Monitor(build_episode_env(t, env_config, driver_config))
         env.reset(seed=seed + rank)
         return env
 
@@ -402,7 +453,7 @@ class SACDriver:
         """Vec stack from the current `env_config`:
         (Subproc|Dummy)VecEnv -> VecCheckNan -> VecNormalize (fresh stats)."""
         cfg = self.config
-        fns = [_make_env_fn(self.env_config, cfg.action_repeat, self._track,
+        fns = [_make_env_fn(self.env_config, cfg, self._track,
                             cfg.seed, i) for i in range(cfg.n_envs)]
         use_subproc = (cfg.vec_env_cls == "subproc"
                        or (cfg.vec_env_cls == "auto" and cfg.n_envs > 1))
@@ -543,12 +594,9 @@ class SACDriver:
             raise ValueError(f"policy must be 'model' or 'random': {policy!r}")
         base_options = BENIGN_EVAL if options is None else options
         track = self._track if self._track is not None else Track.from_synthetic()
-        base = F1Env(track=track,
-                     config=self.env_config if env_config is None
-                     else env_config)
-        env: gym.Env = (ActionRepeat(base, self.config.action_repeat)
-                        if self.config.action_repeat > 1 else base)
-        cap = base.config.max_steps * base.config.dt  # episode time limit (s)
+        use_cfg = self.env_config if env_config is None else env_config
+        env = build_episode_env(track, use_cfg, self.config)
+        cap = use_cfg.max_steps * use_cfg.dt  # episode time limit (s)
 
         episodes = []
         for i in range(n_episodes):

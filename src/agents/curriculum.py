@@ -11,13 +11,16 @@ reward, or env-logic changes.
 
 Design notes:
   * Curriculum = a tuple of `StageConfig`s. The spec's "wide/grippy/
-    single-corner -> full track -> full randomization" example maps to: wide =
-    off_track_margin 3.0 m (config-only scaffold, removed from stage B on);
+    single-corner -> full track -> full randomization" example maps to:
     grippy = dry mediums at 30 C (the max-grip realistic condition in this
     sim, Layer 5 evidence); single-corner = spawn-at-speed anywhere on track
-    (episodes start mid-corner at up to 65 m/s, training corners piecewise).
-    The final stage trains on Layer 4's default DR verbatim — full setup +
-    weather randomization every reset.
+    (episodes start mid-corner at up to 65 m/s, training corners piecewise);
+    the final stage randomizes setup + weather every reset. The literal
+    "wide track" scaffold (off_track_margin 3.0) was tried in attempt 1 and
+    measured to neither corrupt nor accelerate learning — v2 drops it.
+    Compounds randomize weather-MATCHED only until Layer 7 calibrates the
+    placeholder tire-temperature physics (attempt-1 evidence: the same
+    policy drove 3,137 m on mediums and 30 m on cold softs).
   * Stages advance when their GATE passes (checked every `eval_every` steps);
     a `max_steps` failsafe advances anyway and records `gate_met=False` so an
     unattainable provisional gate can never stall a long unattended run. The
@@ -58,9 +61,9 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.logger import configure as configure_logger
 from stable_baselines3.common.vec_env import VecNormalize
 
-from src.agents.sac_driver import (BENIGN_EVAL, SMOKE_EVAL, ActionRepeat,
-                                   EvalReport, SACDriver, SACDriverConfig,
-                                   benign_training_dr)
+from src.agents.sac_driver import (BENIGN_EVAL, SMOKE_EVAL, EvalReport,
+                                   SACDriver, SACDriverConfig,
+                                   benign_training_dr, build_episode_env)
 from src.envs.f1_env import DomainRandomizationConfig, EnvConfig, F1Env
 from src.tracks.track import Track
 
@@ -82,10 +85,15 @@ def _cond(name: str, **overrides) -> EvalCondition:
 
 
 # Gates + model selection look here. Never used for the final comparison.
+# v2 panels (attempt-1 evidence, models/l6_generalist_attempt1): compounds
+# are weather-MATCHED everywhere — cross-compound driving is dominated by
+# Layer 4's placeholder cold-slick temperature model (30 m on cold softs vs
+# 3,137 m on mediums for the same policy), so compound-mismatch
+# generalization is deferred until Layer 7 calibrates tire physics.
 VALIDATION_PANEL: tuple[EvalCondition, ...] = (
     _cond("V1_benign"),
-    _cond("V2_soft_light", compound="soft", fuel=25.0, aero_level=0.2),
-    _cond("V3_hard_heavy", compound="hard", fuel=95.0, aero_level=0.8),
+    _cond("V2_light_lowwing", fuel=25.0, aero_level=0.2),
+    _cond("V3_heavy_highwing", fuel=95.0, aero_level=0.8),
     _cond("V4_damp_inters", weather="damp", compound="intermediate",
           rain_intensity=0.25, track_temp=22.0),
     _cond("V5_wet_wets", weather="wet", compound="wet", rain_intensity=0.7,
@@ -94,15 +102,16 @@ VALIDATION_PANEL: tuple[EvalCondition, ...] = (
 
 # Held out from ALL training-time decisions; consumed only by the
 # generalist-vs-specialist comparison and the Layer 6 acceptance test.
-# H3 is a deliberate compound mismatch (slicks in the damp) — rare but inside
-# the training distribution, exactly the "drives any setup" claim under test.
+# In-distribution but never trained or selected on. (The deliberate
+# compound-mismatch condition — slicks in the damp — returns post-Layer-7.)
 HELD_OUT_PANEL: tuple[EvalCondition, ...] = (
     _cond("H1_dry_mid", fuel=60.0, aero_level=0.35, brake_bias=0.60,
           final_drive=2.90),
-    _cond("H2_soft_heavy_wing", compound="soft", fuel=85.0, aero_level=0.9),
-    _cond("H3_damp_on_slicks", weather="damp", compound="medium",
-          rain_intensity=0.35, track_temp=20.0),
-    _cond("H4_wet_inters", weather="wet", compound="intermediate",
+    _cond("H2_dry_heavy_maxwing", fuel=85.0, aero_level=0.9,
+          brake_bias=0.55),
+    _cond("H3_damp_inters_light", weather="damp", compound="intermediate",
+          rain_intensity=0.35, track_temp=20.0, fuel=35.0, aero_level=0.6),
+    _cond("H4_wet_wets_midfuel", weather="wet", compound="wet",
           rain_intensity=0.5, track_temp=16.0, fuel=40.0, aero_level=0.65),
 )
 
@@ -213,20 +222,44 @@ class StageConfig:
 
 
 def l6_driver_config(seed: int = 42) -> SACDriverConfig:
-    """Layer 5 defaults; the in-train keeper is off — the curriculum trainer
-    does per-stage best-keeping on stage-appropriate yardsticks instead."""
-    return SACDriverConfig(seed=seed, best_eval_every=None)
+    """Layer 5 defaults, two Layer 6 changes: the in-train keeper is off
+    (the curriculum trainer does per-stage best-keeping on stage-appropriate
+    yardsticks) and actions are simplified to [steer, drive] (the attempt-1
+    restructure — see `SimplifiedActions`)."""
+    return SACDriverConfig(seed=seed, best_eval_every=None,
+                           simplified_actions=True)
 
 
-def stage_c_dr() -> DomainRandomizationConfig:
-    """Weather + compound randomization at Layer 4 defaults; setup still
-    pinned mid; moderate fuel; spawn-at-speed kept from Layer 5."""
+def matched_compound_probs() -> dict:
+    """One weather-appropriate compound per weather (the post-Layer-7
+    descope: no cold-slick mismatches while tire-temp physics is a
+    placeholder)."""
+    return {"dry": (("medium", 1.0),),
+            "damp": (("intermediate", 1.0),),
+            "wet": (("wet", 1.0),)}
+
+
+def stage_setup_dr() -> DomainRandomizationConfig:
+    """Dry mediums with the FULL Layer 4 setup ranges (fuel 20-105, aero
+    0-1, brake bias, final drive); spawn-at-speed kept from Layer 5."""
     return dataclasses.replace(
         DomainRandomizationConfig(),
-        fuel_range=(25.0, 60.0),
-        aero_level_range=(0.5, 0.5),
-        brake_bias_range=(0.58, 0.58),
-        final_drive_range=(3.0, 3.0),
+        weather_probs={"dry": 1.0},
+        rain_intensity_range={"dry": (0.0, 0.0)},
+        track_temp_range={"dry": (20.0, 45.0)},
+        compound_probs={"dry": (("medium", 1.0),)},
+        start_speed_range=(20.0, 65.0),
+        start_lateral_range=(-1.0, 1.0),
+        start_heading_error_range=(-0.03, 0.03),
+    )
+
+
+def stage_weather_dr() -> DomainRandomizationConfig:
+    """Layer 4's full weather + setup randomization, compounds matched per
+    weather (the scoped generalist distribution)."""
+    return dataclasses.replace(
+        DomainRandomizationConfig(),
+        compound_probs=matched_compound_probs(),
         start_speed_range=(20.0, 65.0),
         start_lateral_range=(-1.0, 1.0),
         start_heading_error_range=(-0.03, 0.03),
@@ -234,49 +267,50 @@ def stage_c_dr() -> DomainRandomizationConfig:
 
 
 def l6_default_curriculum() -> tuple[StageConfig, ...]:
-    """The default A -> D recipe. Every threshold/budget here is a labeled,
-    provisional knob (calibration-grade values are Layer 7's business)."""
+    """The v2 (attempt-2) recipe. Every threshold/budget is a labeled,
+    provisional knob (calibration-grade values are Layer 7's business).
+
+    v1 (A_wide_benign -> B_true_edges -> C_weather -> D_full_dr, 6-dim
+    actions) ran 1.75M steps and is preserved as
+    models/l6_generalist_attempt1: no stage ever lapped, and the panel
+    exposed the compound cliff. v2 therefore (1) drives through
+    `SimplifiedActions` (see l6_driver_config), (2) drops the wide-margin
+    scaffold — measured to neither corrupt nor accelerate learning —
+    (3) goes benign-first: laps are the stage-A gate, and (4) randomizes
+    compounds weather-MATCHED only, deferring the mismatch axis to
+    post-Layer-7 physics calibration. T7's acceptance floors are unchanged.
+    """
     benign = benign_training_dr()
     return (
-        # A: wide track (margin 3.0 m — survivable excursions, the soft-edge
-        # penalty still teaches the real limits), benign grippy condition.
+        # A: the Layer 5 obligation made the entry gate — laps on demand on
+        # the benign preset, true edges from the start.
         StageConfig(
-            name="A_wide_benign",
-            env_config=EnvConfig(off_track_margin=3.0, dr=benign),
-            gate=StageGate(any_of=(GateCheck("laps", "spread", 1),
-                                   GateCheck("progress", "spread", 2500.0))),
-            min_steps=50_000, max_steps=250_000,
-        ),
-        # B: true edges (Layer 4's 1.0 m margin), still benign. The gate is
-        # the Layer 5 obligation made real: laps on demand.
-        StageConfig(
-            name="B_true_edges",
+            name="A_benign_laps",
             env_config=EnvConfig(dr=benign),
             gate=StageGate(all_of=(GateCheck("laps", "spread", 3),
                                    GateCheck("canonical_lap"))),
             max_steps=400_000,
         ),
-        # C: weather + compounds randomize (Layer 4 tables), setup pinned.
+        # B: full SETUP randomization on dry mediums.
         StageConfig(
-            name="C_weather",
-            env_config=EnvConfig(dr=stage_c_dr()),
+            name="B_setup_dr",
+            env_config=EnvConfig(dr=stage_setup_dr()),
             gate=StageGate(all_of=(GateCheck("laps", "V1_benign", 1),
-                                   GateCheck("laps", "V2_soft_light", 1),
-                                   GateCheck("laps", "V3_hard_heavy", 1),
-                                   GateCheck("laps", "V4_damp_inters", 1),
-                                   GateCheck("progress", "V5_wet_wets",
-                                             1500.0))),
-            yardstick=VALIDATION_PANEL, episodes=3,
-            max_steps=500_000,
+                                   GateCheck("laps", "V2_light_lowwing", 1),
+                                   GateCheck("laps", "V3_heavy_highwing",
+                                             1))),
+            yardstick=VALIDATION_PANEL[:3], episodes=3,
+            max_steps=400_000,
         ),
-        # D: full randomization — Layer 4 default DR verbatim. Budget-bound;
-        # the panel keeper selects the best generalist seen.
+        # C: weather joins (matched compounds), setup stays fully random.
+        # Terminal stage — budget-bound, the panel keeper selects the best
+        # generalist seen.
         StageConfig(
-            name="D_full_dr",
-            env_config=EnvConfig(dr=DomainRandomizationConfig()),
+            name="C_weather_matched",
+            env_config=EnvConfig(dr=stage_weather_dr()),
             gate=None,
             yardstick=VALIDATION_PANEL, episodes=3,
-            max_steps=600_000,
+            max_steps=500_000,
         ),
     )
 
@@ -713,9 +747,7 @@ def evaluate_distribution(driver: SACDriver, n_episodes: int = 40,
     "lap-time distribution over random conditions" bullet."""
     env_config = env_config or EnvConfig(dr=DomainRandomizationConfig())
     track = track or driver._track or Track.from_synthetic()
-    base = F1Env(track=track, config=env_config)
-    env = (ActionRepeat(base, driver.config.action_repeat)
-           if driver.config.action_repeat > 1 else base)
+    env = build_episode_env(track, env_config, driver.config)
 
     episodes = []
     for i in range(n_episodes):

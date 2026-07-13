@@ -3,8 +3,8 @@
 
 Recipes
     l5_benign      flat SAC on the benign preset (the Layer 5 behavior; default)
-    l6_generalist  the Layer 6 curriculum (A_wide_benign -> B_true_edges ->
-                   C_weather -> D_full_dr): tensorboard logging, rotating
+    l6_generalist  the Layer 6 curriculum (A_benign_laps -> B1_setup_near ->
+                   B2_setup_full -> C_full_dr): tensorboard logging, rotating
                    checkpoints with the replay buffer, gate-driven stage
                    advancement, per-stage best-policy keeping.
 

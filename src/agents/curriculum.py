@@ -10,27 +10,47 @@ supplies training, checkpointing and pinned-condition evaluation. No physics,
 reward, or env-logic changes.
 
 Design notes:
-  * Curriculum = a tuple of `StageConfig`s. The spec's "wide/grippy/
-    single-corner -> full track -> full randomization" example maps to:
-    grippy = dry mediums at 30 C (the max-grip realistic condition in this
-    sim, Layer 5 evidence); single-corner = spawn-at-speed anywhere on track
-    (episodes start mid-corner at up to 65 m/s, training corners piecewise);
-    the final stage randomizes setup + weather every reset. The literal
-    "wide track" scaffold (off_track_margin 3.0) was tried in attempt 1 and
-    measured to neither corrupt nor accelerate learning — v2 drops it.
-    Compounds randomize weather-MATCHED only until Layer 7 calibrates the
-    placeholder tire-temperature physics (attempt-1 evidence: the same
-    policy drove 3,137 m on mediums and 30 m on cold softs).
+  * Curriculum = a tuple of `StageConfig`s. The v3 (attempt-3) sequence:
+    A benign laps -> B1 narrow setup + dry-compound rotation -> B2 full
+    setup -> C full Layer 4 randomization. The spec's "wide/grippy/
+    single-corner" example maps to: grippy = dry mediums at 30 C (the
+    max-grip realistic condition in this sim, Layer 5 evidence);
+    single-corner = spawn-at-speed anywhere on track, training corners
+    piecewise. The literal "wide track" scaffold (off_track_margin 3.0) was
+    tried in attempt 1 and measured to neither corrupt nor accelerate
+    learning — dropped since v2.
+  * v3 exists because v2's one-shot jump from pinned-benign to the full
+    setup hypercube never generalized (runs/l6_generalist_v2 +
+    reports/layer6_report.md, on record): its best policy lapped benign at
+    133.9 s but finished 0/40 under full randomization, tolerated only
+    ~+/-15 kg fuel / +/-0.1 aero, died within ~30 m of ANY compound
+    one-hot flip (soft and hard alike, dry), and stalled from spawns below
+    its 20 m/s training floor. Meanwhile stage B's LIVE policy lost even
+    the benign lap — 25-60 m/s spawns on random skinny-wing setups are
+    frequently unsavable-by-any-action, and those doomed transitions
+    poisoned training. Hence the four v3 changes: (1) setup ranges widen
+    progressively instead of jumping, (2) spawns are 15-40 m/s in learning
+    stages — the low end teaches slow-speed driving, the capped top end
+    removes most unsavable spawns — widening to 15-60 in the terminal
+    stage to cover the acceptance distribution's 25-60; (3) dry compounds
+    rotate from B1 so the categorical obs dims are covered early; (4) the
+    terminal stage uses Layer 4's DR tables verbatim, mismatched compounds
+    included (~13% of the acceptance distribution — evaluating what was
+    never trained proved fatal in v2).
   * Stages advance when their GATE passes (checked every `eval_every` steps);
     a `max_steps` failsafe advances anyway and records `gate_met=False` so an
     unattainable provisional gate can never stall a long unattended run. The
     hard acceptance lives in tests/test_train.py, not in the gates.
   * Model selection: per-stage best-policy keeping on the stage's own
-    yardstick (benign spread starts for the benign stages, the VALIDATION
-    panel once weather/setups randomize). Each stage hands its best self to
-    the next; the final artifact is the best stage-D policy. Snapshots pair
-    the policy with its VecNormalize statistics (Layer 5 discipline) and are
-    mirrored to disk so a resumed run cannot lose a pre-crash best.
+    yardstick (benign spread starts for the benign stage, validation
+    conditions once setups randomize), ranked by DISTINCT CONDITIONS LAPPED
+    first, then total laps, capped time-to-lap, progress. v2 ranked total
+    laps first and a benign specialist's 2 laps could never be displaced by
+    a broader-but-slower policy — nothing ever beat stage C's entry eval in
+    500k steps. Each stage hands its best self to the next; the final
+    artifact is the best terminal-stage policy. Snapshots pair the policy
+    with its VecNormalize statistics (Layer 5 discipline) and are mirrored
+    to disk so a resumed run cannot lose a pre-crash best.
   * Evaluation hygiene: VALIDATION_PANEL steers gates + model selection;
     HELD_OUT_PANEL is never consulted during training — it exists only for
     the final generalist-vs-specialist comparison and the acceptance test.
@@ -85,25 +105,28 @@ def _cond(name: str, **overrides) -> EvalCondition:
 
 
 # Gates + model selection look here. Never used for the final comparison.
-# v2 panels (attempt-1 evidence, models/l6_generalist_attempt1): compounds
-# are weather-MATCHED everywhere — cross-compound driving is dominated by
-# Layer 4's placeholder cold-slick temperature model (30 m on cold softs vs
-# 3,137 m on mediums for the same policy), so compound-mismatch
-# generalization is deferred until Layer 7 calibrates tire physics.
+# v3 panel: V4/V5 span the dry-compound axis (v2 evidence: the kept policy
+# died within ~30 m of any compound one-hot flip because compound variety
+# was neither trained nor selected for — the T7 distribution draws each dry
+# slick 1/3 of the time, so compound competence must be able to win model
+# selection). Their track temps sit toward each compound's window since the
+# cold-slick temperature model is a known Layer 7 calibration target.
+# VALIDATION_PANEL[:5] is the dry sub-panel (stage B1/B2 yardstick).
 VALIDATION_PANEL: tuple[EvalCondition, ...] = (
     _cond("V1_benign"),
     _cond("V2_light_lowwing", fuel=25.0, aero_level=0.2),
     _cond("V3_heavy_highwing", fuel=95.0, aero_level=0.8),
-    _cond("V4_damp_inters", weather="damp", compound="intermediate",
+    _cond("V4_dry_softs", compound="soft", track_temp=35.0),
+    _cond("V5_dry_hards", compound="hard", fuel=70.0, track_temp=40.0),
+    _cond("V6_damp_inters", weather="damp", compound="intermediate",
           rain_intensity=0.25, track_temp=22.0),
-    _cond("V5_wet_wets", weather="wet", compound="wet", rain_intensity=0.7,
+    _cond("V7_wet_wets", weather="wet", compound="wet", rain_intensity=0.7,
           track_temp=18.0, aero_level=0.8),
 )
 
 # Held out from ALL training-time decisions; consumed only by the
 # generalist-vs-specialist comparison and the Layer 6 acceptance test.
-# In-distribution but never trained or selected on. (The deliberate
-# compound-mismatch condition — slicks in the damp — returns post-Layer-7.)
+# In-distribution but never trained or selected on.
 HELD_OUT_PANEL: tuple[EvalCondition, ...] = (
     _cond("H1_dry_mid", fuel=60.0, aero_level=0.35, brake_bias=0.60,
           final_drive=2.90),
@@ -140,7 +163,7 @@ def pinned_dr(condition: EvalCondition) -> DomainRandomizationConfig:
         aero_level_range=pin("aero_level", 0.5),
         brake_bias_range=pin("brake_bias", 0.58),
         final_drive_range=pin("final_drive", 3.0),
-        start_speed_range=(20.0, 65.0),
+        start_speed_range=(15.0, 40.0),   # v3 spawn policy (see module doc)
         start_lateral_range=(-1.0, 1.0),
         start_heading_error_range=(-0.03, 0.03),
         randomize_start_s=True,
@@ -230,87 +253,115 @@ def l6_driver_config(seed: int = 42) -> SACDriverConfig:
                            simplified_actions=True)
 
 
-def matched_compound_probs() -> dict:
-    """One weather-appropriate compound per weather (the post-Layer-7
-    descope: no cold-slick mismatches while tire-temp physics is a
-    placeholder)."""
-    return {"dry": (("medium", 1.0),),
-            "damp": (("intermediate", 1.0),),
-            "wet": (("wet", 1.0),)}
+def dry_rotation_probs() -> dict:
+    """All three dry slicks, equal draw — covers the compound one-hot obs
+    dims early (v2 evidence: the kept policy died within ~30 m of any
+    compound flip, soft and hard alike, on the same dry track it lapped
+    on mediums)."""
+    return {"dry": (("soft", 1 / 3), ("medium", 1 / 3), ("hard", 1 / 3))}
 
 
-def stage_setup_dr() -> DomainRandomizationConfig:
-    """Dry mediums with the FULL Layer 4 setup ranges (fuel 20-105, aero
-    0-1, brake bias, final drive); spawn-at-speed kept from Layer 5."""
+def stage_dry_dr(fuel: tuple, aero: tuple, bias: tuple, fd: tuple,
+                 temp: tuple = (20.0, 45.0)) -> DomainRandomizationConfig:
+    """A dry stage: rotating slicks, the given setup ranges, v3 spawns
+    (15-40 m/s: low end teaches slow-speed driving, capped top end keeps
+    spawns savable — see module doc)."""
     return dataclasses.replace(
         DomainRandomizationConfig(),
         weather_probs={"dry": 1.0},
         rain_intensity_range={"dry": (0.0, 0.0)},
-        track_temp_range={"dry": (20.0, 45.0)},
-        compound_probs={"dry": (("medium", 1.0),)},
-        start_speed_range=(20.0, 65.0),
+        track_temp_range={"dry": temp},
+        compound_probs=dry_rotation_probs(),
+        fuel_range=fuel,
+        aero_level_range=aero,
+        brake_bias_range=bias,
+        final_drive_range=fd,
+        start_speed_range=(15.0, 40.0),
         start_lateral_range=(-1.0, 1.0),
         start_heading_error_range=(-0.03, 0.03),
     )
 
 
-def stage_weather_dr() -> DomainRandomizationConfig:
-    """Layer 4's full weather + setup randomization, compounds matched per
-    weather (the scoped generalist distribution)."""
+def stage_full_dr() -> DomainRandomizationConfig:
+    """The terminal stage: Layer 4's randomization tables VERBATIM —
+    weather, rain, temperatures, compounds including mismatches (~13% of
+    the acceptance distribution; v2 evidence: any never-trained category
+    is an instant off). Spawn range 15-60 m/s: a superset of the
+    acceptance distribution's 25-60 so evaluation speeds are never
+    out-of-distribution, low end kept for slow-speed skill retention."""
     return dataclasses.replace(
         DomainRandomizationConfig(),
-        compound_probs=matched_compound_probs(),
-        start_speed_range=(20.0, 65.0),
+        start_speed_range=(15.0, 60.0),
         start_lateral_range=(-1.0, 1.0),
         start_heading_error_range=(-0.03, 0.03),
     )
 
 
 def l6_default_curriculum() -> tuple[StageConfig, ...]:
-    """The v2 (attempt-2) recipe. Every threshold/budget is a labeled,
+    """The v3 (attempt-3) recipe. Every threshold/budget is a labeled,
     provisional knob (calibration-grade values are Layer 7's business).
 
-    v1 (A_wide_benign -> B_true_edges -> C_weather -> D_full_dr, 6-dim
-    actions) ran 1.75M steps and is preserved as
-    models/l6_generalist_attempt1: no stage ever lapped, and the panel
-    exposed the compound cliff. v2 therefore (1) drives through
-    `SimplifiedActions` (see l6_driver_config), (2) drops the wide-margin
-    scaffold — measured to neither corrupt nor accelerate learning —
-    (3) goes benign-first: laps are the stage-A gate, and (4) randomizes
-    compounds weather-MATCHED only, deferring the mismatch axis to
-    post-Layer-7 physics calibration. T7's acceptance floors are unchanged.
+    History, all on record: v1 (6-dim actions, wide-margin scaffold,
+    models/l6_generalist_attempt1) ran 1.75M steps and never lapped. v2
+    (SimplifiedActions, benign-first) mastered the benign lap at 133.9 s
+    but its one-shot jump to the full setup hypercube produced a brittle
+    point-specialist — 0/40 under full randomization
+    (reports/layer6_report.md). v3 keeps v2's action space and benign-first
+    entry and adds the four evidence-backed fixes documented in the module
+    docstring: progressive setup widening (B1 narrow -> B2 full), 15-40 m/s
+    spawns, dry-compound rotation from B1, and the terminal stage on Layer 4
+    tables verbatim. T7's acceptance floors are unchanged throughout.
     """
-    benign = benign_training_dr()
+    dry_panel = VALIDATION_PANEL[:5]
     return (
         # A: the Layer 5 obligation made the entry gate — laps on demand on
         # the benign preset, true edges from the start.
         StageConfig(
             name="A_benign_laps",
-            env_config=EnvConfig(dr=benign),
+            env_config=EnvConfig(dr=dataclasses.replace(
+                benign_training_dr(), start_speed_range=(15.0, 40.0))),
             gate=StageGate(all_of=(GateCheck("laps", "spread", 3),
                                    GateCheck("canonical_lap"))),
             max_steps=400_000,
         ),
-        # B: full SETUP randomization on dry mediums.
+        # B1: setup ranges open NARROW around benign; dry compounds rotate.
+        # Gate = keep lapping benign while making real distance on the
+        # setup-edge conditions (they sit outside B1's training ranges).
         StageConfig(
-            name="B_setup_dr",
-            env_config=EnvConfig(dr=stage_setup_dr()),
-            gate=StageGate(all_of=(GateCheck("laps", "V1_benign", 1),
-                                   GateCheck("laps", "V2_light_lowwing", 1),
-                                   GateCheck("laps", "V3_heavy_highwing",
-                                             1))),
-            yardstick=VALIDATION_PANEL[:3], episodes=3,
-            max_steps=400_000,
+            name="B1_setup_near",
+            env_config=EnvConfig(dr=stage_dry_dr(
+                fuel=(25.0, 50.0), aero=(0.35, 0.65),
+                bias=(0.56, 0.60), fd=(2.95, 3.10), temp=(25.0, 40.0))),
+            gate=StageGate(all_of=(
+                GateCheck("laps", "V1_benign", 2),
+                GateCheck("progress", "V2_light_lowwing", 1000),
+                GateCheck("progress", "V3_heavy_highwing", 1000))),
+            yardstick=dry_panel, episodes=3,
+            max_steps=300_000,
         ),
-        # C: weather joins (matched compounds), setup stays fully random.
-        # Terminal stage — budget-bound, the panel keeper selects the best
-        # generalist seen.
+        # B2: full Layer 4 SETUP ranges (fuel 20-105, aero 0-1, bias, final
+        # drive), still dry. Gate = a lap on each dry setup condition.
         StageConfig(
-            name="C_weather_matched",
-            env_config=EnvConfig(dr=stage_weather_dr()),
+            name="B2_setup_full",
+            env_config=EnvConfig(dr=stage_dry_dr(
+                fuel=(20.0, 105.0), aero=(0.0, 1.0),
+                bias=(0.54, 0.62), fd=(2.85, 3.15))),
+            gate=StageGate(all_of=(
+                GateCheck("laps", "V1_benign", 1),
+                GateCheck("laps", "V2_light_lowwing", 1),
+                GateCheck("laps", "V3_heavy_highwing", 1))),
+            yardstick=dry_panel, episodes=3,
+            max_steps=350_000,
+        ),
+        # C: full Layer 4 randomization, mismatched compounds included.
+        # Terminal stage — budget-bound, the panel keeper selects the best
+        # generalist seen (distinct conditions lapped first).
+        StageConfig(
+            name="C_full_dr",
+            env_config=EnvConfig(dr=stage_full_dr()),
             gate=None,
             yardstick=VALIDATION_PANEL, episodes=3,
-            max_steps=500_000,
+            max_steps=450_000,
         ),
     )
 
@@ -356,10 +407,15 @@ def evaluate_panel(driver: SACDriver, panel: tuple[EvalCondition, ...],
 
 
 def _panel_key(evals: dict) -> tuple:
-    """Rank policies: laps, then capped time-to-lap, then progress —
-    aggregated over whatever evals the stage yardstick produced."""
+    """Rank policies: DISTINCT conditions lapped, then total laps, then
+    capped time-to-lap, then progress — aggregated over whatever evals the
+    stage yardstick produced. Breadth outranks depth on purpose: under v2's
+    total-laps-first key a benign specialist's 2 laps could never be
+    displaced by a policy lapping two conditions once each (v2 stage C:
+    zero keeper improvements in 500k steps)."""
     reps = list(evals.values())
-    return (sum(r.laps_completed for r in reps),
+    return (sum(1 for r in reps if r.laps_completed > 0),
+            sum(r.laps_completed for r in reps),
             -float(np.mean([r.mean_time_to_lap_capped for r in reps])),
             float(np.mean([r.mean_progress_m for r in reps])))
 
@@ -560,8 +616,9 @@ class CurriculumTrainer:
                 state_file.write_text(json.dumps(self._state_dict(),
                                                  indent=2))
         print(f"    [best] {stage.name} @ {self.total_steps:,d} steps: "
-              f"laps {int(key[0])}, time-to-lap {-key[1]:.1f} s, "
-              f"progress {key[2]:.0f} m", flush=True)
+              f"conds-lapped {int(key[0])}, laps {int(key[1])}, "
+              f"time-to-lap {-key[2]:.1f} s, progress {key[3]:.0f} m",
+              flush=True)
 
     def _restore_stage_best(self, stage: StageConfig) -> None:
         mem = self._best_mem

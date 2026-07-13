@@ -80,10 +80,11 @@ def test_t1_curriculum_config_sanity():
     for s in stages:
         assert s.env_config.off_track_margin == EnvConfig().off_track_margin
 
-    # the spec's "full randomization" is reached on the setup + weather axes:
-    # final stage == Layer 4 defaults for every condition range. Compounds
-    # are weather-MATCHED (one per weather) — the documented post-Layer-7
-    # descope while tire-temperature physics is a placeholder.
+    # the spec's "full randomization" is reached: the terminal stage uses
+    # Layer 4's DR tables VERBATIM on every condition axis — weather, rain,
+    # temperature, setup, and compounds INCLUDING the mismatched pairs the
+    # acceptance distribution draws (v3; v2's matched-only descope is gone,
+    # measured fatal: any never-trained category was an instant off).
     ref = DomainRandomizationConfig()
     last = stages[-1].env_config.dr
     assert last.weather_probs == ref.weather_probs
@@ -93,8 +94,29 @@ def test_t1_curriculum_config_sanity():
     assert last.aero_level_range == ref.aero_level_range
     assert last.brake_bias_range == ref.brake_bias_range
     assert last.final_drive_range == ref.final_drive_range
-    for w, table in last.compound_probs.items():
-        assert len(table) == 1 and table[0][1] == 1.0, (w, table)
+    assert last.compound_probs == ref.compound_probs
+
+    # v3 spawn policy: the terminal stage's spawn range covers the
+    # acceptance distribution's (so evaluation speeds are never
+    # out-of-distribution) and keeps the low end that teaches slow-speed
+    # driving (v2 evidence: 20 m/s training floor -> stalls from slow spawns)
+    assert _within(ref.start_speed_range, last.start_speed_range)
+    assert last.start_speed_range[0] <= 15.0
+    for s in stages:
+        assert s.env_config.dr.start_speed_range[0] <= 15.0, s.name
+
+    # v3 progressive widening: the narrow setup stage nests inside the full
+    # one (v2 evidence: the one-shot jump to the full hypercube never
+    # generalized)
+    b_near, b_full = stages[1].env_config.dr, stages[2].env_config.dr
+    for attr in ("fuel_range", "aero_level_range", "brake_bias_range",
+                 "final_drive_range"):
+        assert _within(getattr(b_near, attr), getattr(b_full, attr)), attr
+
+    # dry compounds rotate from the first setup stage on (v2 evidence: the
+    # kept policy died within ~30 m of any compound one-hot flip)
+    for s in stages[1:]:
+        assert len(s.env_config.dr.compound_probs["dry"]) == 3, s.name
 
     # every stage's CONDITION ranges live inside Layer 4's default bounds
     # (start-pose ranges are exploration protocol, not conditions — exempt)
@@ -178,9 +200,14 @@ def test_t2_domain_randomization_every_reset():
 
     assert {s["weather"] for s in setups} == set(ref.weather_probs), \
         "200 resets should draw every weather (probs 0.60/0.25/0.15)"
-    # matched compounds: exactly one per weather, so three across 200 draws
+    # full Layer 4 compound tables: all five compounds appear, and the
+    # mismatched slicks-in-rain draws the acceptance distribution contains
+    # are present in training too (v3)
     assert ({s["compound"] for s in setups}
-            == {"medium", "intermediate", "wet"})
+            == {"soft", "medium", "hard", "intermediate", "wet"})
+    assert any(s["weather"] in ("damp", "wet")
+               and s["compound"] in ("soft", "medium", "hard")
+               for s in setups), "expected some slicks-in-rain draws"
     fuels = [s["fuel"] for s in setups]
     aeros = [s["aero_level"] for s in setups]
     biases = [s["brake_bias"] for s in setups]
@@ -321,7 +348,7 @@ def test_t5_env_swap_continuity():
     count_before = float(d.vec_env.obs_rms.count)
     obs_space, act_space = d.model.observation_space, d.model.action_space
 
-    d.swap_env_config(l6_default_curriculum()[0].env_config)  # 3 m margin
+    d.swap_env_config(l6_default_curriculum()[0].env_config)
     assert np.array_equal(d.vec_env.obs_rms.mean, rms_mean), \
         "VecNormalize stats must transplant across the swap"
     assert d.model.observation_space == obs_space

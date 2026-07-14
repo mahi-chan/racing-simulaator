@@ -245,12 +245,29 @@ class StageConfig:
 
 
 def l6_driver_config(seed: int = 42) -> SACDriverConfig:
-    """Layer 5 defaults, two Layer 6 changes: the in-train keeper is off
-    (the curriculum trainer does per-stage best-keeping on stage-appropriate
-    yardsticks) and actions are simplified to [steer, drive] (the attempt-1
-    restructure — see `SimplifiedActions`)."""
+    """Layer 5 defaults with the Layer 6 changes.
+
+    Since v2: the in-train keeper is off (the curriculum trainer does
+    per-stage best-keeping on stage-appropriate yardsticks) and actions are
+    simplified to [steer, drive] (the attempt-1 restructure — see
+    `SimplifiedActions`).
+
+    v4 anti-forgetting changes (the mechanism v1-v3 left untreated: at
+    buffer 300k every stage's experience was fully extinct from replay
+    before the next stage ended, so the live policy TRADED skills instead
+    of accumulating them — all three attempts ended with every end-of-stage
+    gate at 0 laps on previously mastered conditions):
+      * buffer_size 1.5M — replay spans the entire run; earlier stages'
+        transitions keep gradient pressure on earlier skills (rehearsal).
+        ~0.5 GB RAM / ~0.5 GB per checkpoint, headroom verified.
+      * net_arch (512, 512) — capacity for lap-grade control across many
+        setup/weather condition combinations at once (~1.5-2x slower
+        gradient steps on CPU; accepted).
+    """
     return SACDriverConfig(seed=seed, best_eval_every=None,
-                           simplified_actions=True)
+                           simplified_actions=True,
+                           buffer_size=1_500_000,
+                           net_arch=(512, 512))
 
 
 def dry_rotation_probs() -> dict:

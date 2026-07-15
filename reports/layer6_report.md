@@ -79,3 +79,19 @@ Versions: python 3.11.15, numpy 2.4.6, gymnasium 1.3.0, stable_baselines3 2.9.0,
     dry  : 0/27 finished, mean lap -
     wet  : 0/3 finished, mean lap -
 ```
+
+## Generalist vs setup-specialists (documented gap)
+
+```
+    condition            metric                       generalist  specialist       gap
+    H1_dry_mid           time-to-lap (DNF=cap), s          300.0       300.0     +0.0%
+                         laps / progress ratio                 0           0    17.44x
+    H2_dry_heavy_maxwing time-to-lap (DNF=cap), s          300.0       300.0     +0.0%
+                         laps / progress ratio                 0           0     1.08x
+    H3_damp_inters_light time-to-lap (DNF=cap), s          300.0       271.4    +10.5%
+                         laps / progress ratio                 0           1     0.21x
+    H4_wet_wets_midfuel  time-to-lap (DNF=cap), s          300.0       250.8    +19.6%
+                         laps / progress ratio                 0           2     0.17x
+```
+
+Positive gap = generalist slower than the specialist on that condition (300 s-capped time-to-lap).

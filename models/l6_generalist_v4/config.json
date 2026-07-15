@@ -1,0 +1,190 @@
+{
+  "sac": {
+    "learning_rate": 0.0003,
+    "buffer_size": 1500000,
+    "learning_starts": 10000,
+    "batch_size": 256,
+    "tau": 0.005,
+    "gamma": 0.995,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": "auto",
+    "net_arch": [
+      512,
+      512
+    ],
+    "action_repeat": 4,
+    "simplified_actions": true,
+    "n_envs": 1,
+    "vec_env_cls": "auto",
+    "normalize_obs": true,
+    "normalize_reward": false,
+    "vecnorm_clip_obs": 10.0,
+    "check_nan": true,
+    "best_eval_every": null,
+    "best_eval_episodes": 5,
+    "seed": 42,
+    "device": "auto"
+  },
+  "env": {
+    "dt": 0.02,
+    "substeps": 2,
+    "max_steps": 15000,
+    "lookahead_distances": [
+      10.0,
+      20.0,
+      35.0,
+      55.0,
+      80.0,
+      110.0,
+      150.0,
+      200.0,
+      260.0,
+      330.0
+    ],
+    "obs_clip": 5.0,
+    "off_track_margin": 1.0,
+    "spin_sideslip": 0.6,
+    "spin_min_speed": 5.0,
+    "terminate_on_stall": true,
+    "stall_speed": 1.0,
+    "stall_duration": 2.0,
+    "aero_cla_span": [
+      0.85,
+      1.15
+    ],
+    "aero_cda_span": [
+      0.92,
+      1.08
+    ],
+    "ers_ice_power": 615000.0,
+    "ers_deploy_power": 120000.0,
+    "ers_capacity": 4000000.0,
+    "ers_harvest_power": 120000.0,
+    "drs_max_curvature": 0.0025,
+    "drs_drag_factor": 0.88,
+    "drs_downforce_factor": 0.9,
+    "reward": {
+      "w_progress": 1.0,
+      "w_speed": 0.05,
+      "w_track": 5.0,
+      "soft_edge_margin": 1.0,
+      "w_smooth": 0.05,
+      "w_tire": 20.0,
+      "w_fuel": 1.0,
+      "p_terminal": 100.0
+    },
+    "dr": {
+      "weather_probs": {
+        "dry": 0.6,
+        "damp": 0.25,
+        "wet": 0.15
+      },
+      "rain_intensity_range": {
+        "dry": [
+          0.0,
+          0.0
+        ],
+        "damp": [
+          0.0,
+          0.5
+        ],
+        "wet": [
+          0.3,
+          1.0
+        ]
+      },
+      "track_temp_range": {
+        "dry": [
+          20.0,
+          45.0
+        ],
+        "damp": [
+          12.0,
+          30.0
+        ],
+        "wet": [
+          12.0,
+          30.0
+        ]
+      },
+      "compound_probs": {
+        "dry": [
+          [
+            "soft",
+            0.3333333333333333
+          ],
+          [
+            "medium",
+            0.3333333333333333
+          ],
+          [
+            "hard",
+            0.3333333333333333
+          ]
+        ],
+        "damp": [
+          [
+            "intermediate",
+            0.6
+          ],
+          [
+            "soft",
+            0.06666666666666667
+          ],
+          [
+            "medium",
+            0.06666666666666667
+          ],
+          [
+            "hard",
+            0.06666666666666667
+          ],
+          [
+            "wet",
+            0.2
+          ]
+        ],
+        "wet": [
+          [
+            "wet",
+            0.7
+          ],
+          [
+            "intermediate",
+            0.3
+          ]
+        ]
+      },
+      "fuel_range": [
+        20.0,
+        105.0
+      ],
+      "aero_level_range": [
+        0.0,
+        1.0
+      ],
+      "brake_bias_range": [
+        0.54,
+        0.62
+      ],
+      "final_drive_range": [
+        2.85,
+        3.15
+      ],
+      "start_speed_range": [
+        15.0,
+        60.0
+      ],
+      "start_lateral_range": [
+        -1.0,
+        1.0
+      ],
+      "start_heading_error_range": [
+        -0.03,
+        0.03
+      ],
+      "randomize_start_s": true
+    }
+  }
+}

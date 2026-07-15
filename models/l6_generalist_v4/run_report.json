@@ -1,0 +1,1595 @@
+{
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "gymnasium": "1.3.0",
+    "stable_baselines3": "2.9.0",
+    "torch": "2.13.0+cu130"
+  },
+  "curriculum": {
+    "stage_names": [
+      "A_benign_laps",
+      "B1_setup_near",
+      "B2_setup_full",
+      "C_full_dr"
+    ],
+    "stage_idx": 4,
+    "steps_in_stage": 0,
+    "total_steps": 1325000,
+    "seed": 42,
+    "budget_scale": 1.0,
+    "tensorboard": true,
+    "env_stage": "C_full_dr",
+    "stage_best_keys": {
+      "A_benign_laps": [
+        1,
+        4,
+        -176.74,
+        4372.005610997951
+      ],
+      "B1_setup_near": [
+        1,
+        3,
+        -268.67600000000004,
+        1584.2313467576255
+      ],
+      "B2_setup_full": [
+        1,
+        3,
+        -268.67600000000004,
+        1584.2313467576255
+      ],
+      "C_full_dr": [
+        2,
+        2,
+        -285.06380952380954,
+        1890.293459612978
+      ]
+    },
+    "history": [
+      {
+        "event": "enter_stage",
+        "stage": "A_benign_laps",
+        "total_steps": 0,
+        "steps_in_stage": 0,
+        "wall_s": 0.0,
+        "details": null
+      },
+      {
+        "event": "best",
+        "stage": "A_benign_laps",
+        "total_steps": 0,
+        "steps_in_stage": 0,
+        "wall_s": 1.6,
+        "details": {
+          "key": [
+            0.0,
+            0.0,
+            -300.0,
+            98.246
+          ],
+          "evals": {
+            "spread": {
+              "episodes": 5,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 4,
+              "spin": 0,
+              "mean_progress_m": 98.2,
+              "mean_return": -2.0
+            }
+          }
+        }
+      },
+      {
+        "event": "best",
+        "stage": "A_benign_laps",
+        "total_steps": 25000,
+        "steps_in_stage": 25000,
+        "wall_s": 321.9,
+        "details": {
+          "key": [
+            0.0,
+            0.0,
+            -300.0,
+            929.371
+          ],
+          "evals": {
+            "spread": {
+              "episodes": 5,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 5,
+              "spin": 0,
+              "mean_progress_m": 929.4,
+              "mean_return": 848.4
+            }
+          }
+        }
+      },
+      {
+        "event": "best",
+        "stage": "A_benign_laps",
+        "total_steps": 50000,
+        "steps_in_stage": 50000,
+        "wall_s": 804.6,
+        "details": {
+          "key": [
+            0.0,
+            0.0,
+            -300.0,
+            2088.993
+          ],
+          "evals": {
+            "spread": {
+              "episodes": 5,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 5,
+              "spin": 0,
+              "mean_progress_m": 2089.0,
+              "mean_return": 2032.3
+            }
+          }
+        }
+      },
+      {
+        "event": "best",
+        "stage": "A_benign_laps",
+        "total_steps": 150000,
+        "steps_in_stage": 150000,
+        "wall_s": 2796.9,
+        "details": {
+          "key": [
+            1.0,
+            2.0,
+            -239.632,
+            2747.378
+          ],
+          "evals": {
+            "spread": {
+              "episodes": 5,
+              "laps": 2,
+              "mean_lap_time_s": 149.08,
+              "time_to_lap_capped_s": 239.63,
+              "off_track": 1,
+              "spin": 1,
+              "mean_progress_m": 2747.4,
+              "mean_return": 2775.5
+            }
+          }
+        }
+      },
+      {
+        "event": "best",
+        "stage": "A_benign_laps",
+        "total_steps": 225000,
+        "steps_in_stage": 225000,
+        "wall_s": 4268.2,
+        "details": {
+          "key": [
+            1.0,
+            4.0,
+            -176.74,
+            4372.006
+          ],
+          "evals": {
+            "spread": {
+              "episodes": 5,
+              "laps": 4,
+              "mean_lap_time_s": 145.93,
+              "time_to_lap_capped_s": 176.74,
+              "off_track": 0,
+              "spin": 1,
+              "mean_progress_m": 4372.0,
+              "mean_return": 4472.8
+            }
+          }
+        }
+      },
+      {
+        "event": "gate_met",
+        "stage": "A_benign_laps",
+        "total_steps": 225000,
+        "steps_in_stage": 225000,
+        "wall_s": 4271.3,
+        "details": [
+          {
+            "group": "all_of",
+            "kind": "laps",
+            "target": "spread",
+            "threshold": 3,
+            "value": 4.0,
+            "passed": true
+          },
+          {
+            "group": "all_of",
+            "kind": "canonical_lap",
+            "target": "spread",
+            "threshold": 1.0,
+            "value": 1.0,
+            "passed": true
+          }
+        ]
+      },
+      {
+        "event": "enter_stage",
+        "stage": "B1_setup_near",
+        "total_steps": 225000,
+        "steps_in_stage": 0,
+        "wall_s": 4271.6,
+        "details": null
+      },
+      {
+        "event": "best",
+        "stage": "B1_setup_near",
+        "total_steps": 225000,
+        "steps_in_stage": 0,
+        "wall_s": 4278.6,
+        "details": {
+          "key": [
+            1.0,
+            2.0,
+            -278.473,
+            830.871
+          ],
+          "evals": {
+            "V1_benign": {
+              "episodes": 3,
+              "laps": 2,
+              "mean_lap_time_s": 138.55,
+              "time_to_lap_capped_s": 192.37,
+              "off_track": 1,
+              "spin": 0,
+              "mean_progress_m": 3756.5,
+              "mean_return": 3835.6
+            },
+            "V2_light_lowwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 39.2,
+              "mean_return": -60.3
+            },
+            "V3_heavy_highwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 32.9,
+              "mean_return": -67.5
+            },
+            "V4_dry_softs": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 217.5,
+              "mean_return": 107.0
+            },
+            "V5_dry_hards": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 2,
+              "spin": 1,
+              "mean_progress_m": 108.3,
+              "mean_return": 3.9
+            }
+          }
+        }
+      },
+      {
+        "event": "best",
+        "stage": "B1_setup_near",
+        "total_steps": 325000,
+        "steps_in_stage": 100000,
+        "wall_s": 6313.8,
+        "details": {
+          "key": [
+            1.0,
+            3.0,
+            -268.676,
+            1584.231
+          ],
+          "evals": {
+            "V1_benign": {
+              "episodes": 3,
+              "laps": 3,
+              "mean_lap_time_s": 143.38,
+              "time_to_lap_capped_s": 143.38,
+              "off_track": 0,
+              "spin": 0,
+              "mean_progress_m": 5348.9,
+              "mean_return": 5514.9
+            },
+            "V2_light_lowwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 292.4,
+              "mean_return": 203.9
+            },
+            "V3_heavy_highwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 49.1,
+              "mean_return": -51.4
+            },
+            "V4_dry_softs": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 2,
+              "spin": 1,
+              "mean_progress_m": 1517.8,
+              "mean_return": 1479.9
+            },
+            "V5_dry_hards": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 1,
+              "spin": 2,
+              "mean_progress_m": 713.0,
+              "mean_return": 641.4
+            }
+          }
+        }
+      },
+      {
+        "event": "budget_exhausted",
+        "stage": "B1_setup_near",
+        "total_steps": 525000,
+        "steps_in_stage": 300000,
+        "wall_s": 10220.1,
+        "details": {
+          "gate_met": false,
+          "checks": [
+            {
+              "group": "all_of",
+              "kind": "laps",
+              "target": "V1_benign",
+              "threshold": 2,
+              "value": 0.0,
+              "passed": false
+            },
+            {
+              "group": "all_of",
+              "kind": "progress",
+              "target": "V2_light_lowwing",
+              "threshold": 1000,
+              "value": 751.07,
+              "passed": false
+            },
+            {
+              "group": "all_of",
+              "kind": "progress",
+              "target": "V3_heavy_highwing",
+              "threshold": 1000,
+              "value": 29.65,
+              "passed": false
+            }
+          ]
+        }
+      },
+      {
+        "event": "enter_stage",
+        "stage": "B2_setup_full",
+        "total_steps": 525000,
+        "steps_in_stage": 0,
+        "wall_s": 10220.4,
+        "details": null
+      },
+      {
+        "event": "best",
+        "stage": "B2_setup_full",
+        "total_steps": 525000,
+        "steps_in_stage": 0,
+        "wall_s": 10232.3,
+        "details": {
+          "key": [
+            1.0,
+            3.0,
+            -268.676,
+            1584.231
+          ],
+          "evals": {
+            "V1_benign": {
+              "episodes": 3,
+              "laps": 3,
+              "mean_lap_time_s": 143.38,
+              "time_to_lap_capped_s": 143.38,
+              "off_track": 0,
+              "spin": 0,
+              "mean_progress_m": 5348.9,
+              "mean_return": 5514.9
+            },
+            "V2_light_lowwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 292.4,
+              "mean_return": 203.9
+            },
+            "V3_heavy_highwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 49.1,
+              "mean_return": -51.4
+            },
+            "V4_dry_softs": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 2,
+              "spin": 1,
+              "mean_progress_m": 1517.8,
+              "mean_return": 1479.9
+            },
+            "V5_dry_hards": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 1,
+              "spin": 2,
+              "mean_progress_m": 713.0,
+              "mean_return": 641.4
+            }
+          }
+        }
+      },
+      {
+        "event": "budget_exhausted",
+        "stage": "B2_setup_full",
+        "total_steps": 875000,
+        "steps_in_stage": 350000,
+        "wall_s": 17342.4,
+        "details": {
+          "gate_met": false,
+          "checks": [
+            {
+              "group": "all_of",
+              "kind": "laps",
+              "target": "V1_benign",
+              "threshold": 1,
+              "value": 0.0,
+              "passed": false
+            },
+            {
+              "group": "all_of",
+              "kind": "laps",
+              "target": "V2_light_lowwing",
+              "threshold": 1,
+              "value": 0.0,
+              "passed": false
+            },
+            {
+              "group": "all_of",
+              "kind": "laps",
+              "target": "V3_heavy_highwing",
+              "threshold": 1,
+              "value": 0.0,
+              "passed": false
+            }
+          ]
+        }
+      },
+      {
+        "event": "enter_stage",
+        "stage": "C_full_dr",
+        "total_steps": 875000,
+        "steps_in_stage": 0,
+        "wall_s": 17342.8,
+        "details": null
+      },
+      {
+        "event": "best",
+        "stage": "C_full_dr",
+        "total_steps": 875000,
+        "steps_in_stage": 0,
+        "wall_s": 17357.0,
+        "details": {
+          "key": [
+            1.0,
+            3.0,
+            -277.626,
+            1277.398
+          ],
+          "evals": {
+            "V1_benign": {
+              "episodes": 3,
+              "laps": 3,
+              "mean_lap_time_s": 143.38,
+              "time_to_lap_capped_s": 143.38,
+              "off_track": 0,
+              "spin": 0,
+              "mean_progress_m": 5348.9,
+              "mean_return": 5514.9
+            },
+            "V2_light_lowwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 292.4,
+              "mean_return": 203.9
+            },
+            "V3_heavy_highwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 49.1,
+              "mean_return": -51.4
+            },
+            "V4_dry_softs": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 2,
+              "spin": 1,
+              "mean_progress_m": 1517.8,
+              "mean_return": 1479.9
+            },
+            "V5_dry_hards": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 1,
+              "spin": 2,
+              "mean_progress_m": 713.0,
+              "mean_return": 641.4
+            },
+            "V6_damp_inters": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 36.7,
+              "mean_return": -63.7
+            },
+            "V7_wet_wets": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 2,
+              "spin": 1,
+              "mean_progress_m": 984.0,
+              "mean_return": 927.9
+            }
+          }
+        }
+      },
+      {
+        "event": "best",
+        "stage": "C_full_dr",
+        "total_steps": 1025000,
+        "steps_in_stage": 150000,
+        "wall_s": 20378.0,
+        "details": {
+          "key": [
+            2.0,
+            2.0,
+            -285.064,
+            1890.293
+          ],
+          "evals": {
+            "V1_benign": {
+              "episodes": 3,
+              "laps": 1,
+              "mean_lap_time_s": 153.34,
+              "time_to_lap_capped_s": 251.11,
+              "off_track": 0,
+              "spin": 0,
+              "mean_progress_m": 3709.7,
+              "mean_return": 3763.7
+            },
+            "V2_light_lowwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 1,
+              "spin": 1,
+              "mean_progress_m": 1114.4,
+              "mean_return": 1053.5
+            },
+            "V3_heavy_highwing": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 2,
+              "spin": 1,
+              "mean_progress_m": 1136.7,
+              "mean_return": 1084.0
+            },
+            "V4_dry_softs": {
+              "episodes": 3,
+              "laps": 1,
+              "mean_lap_time_s": 133.0,
+              "time_to_lap_capped_s": 244.33,
+              "off_track": 2,
+              "spin": 0,
+              "mean_progress_m": 4306.2,
+              "mean_return": 4426.4
+            },
+            "V5_dry_hards": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 2,
+              "spin": 0,
+              "mean_progress_m": 1357.1,
+              "mean_return": 1311.6
+            },
+            "V6_damp_inters": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 2,
+              "spin": 1,
+              "mean_progress_m": 874.7,
+              "mean_return": 803.9
+            },
+            "V7_wet_wets": {
+              "episodes": 3,
+              "laps": 0,
+              "mean_lap_time_s": null,
+              "time_to_lap_capped_s": 300.0,
+              "off_track": 3,
+              "spin": 0,
+              "mean_progress_m": 733.3,
+              "mean_return": 610.6
+            }
+          }
+        }
+      },
+      {
+        "event": "budget_exhausted",
+        "stage": "C_full_dr",
+        "total_steps": 1325000,
+        "steps_in_stage": 450000,
+        "wall_s": 26431.4,
+        "details": {
+          "gate_met": null,
+          "checks": []
+        }
+      }
+    ],
+    "finished": true,
+    "wall_seconds": 26451.1,
+    "versions": {
+      "python": "3.11.15",
+      "numpy": "2.4.6",
+      "gymnasium": "1.3.0",
+      "stable_baselines3": "2.9.0",
+      "torch": "2.13.0+cu130"
+    },
+    "final_panel": {
+      "V1_benign": {
+        "episodes": 3,
+        "laps": 1,
+        "mean_lap_time_s": 153.34,
+        "time_to_lap_capped_s": 251.11,
+        "off_track": 0,
+        "spin": 0,
+        "mean_progress_m": 3709.7,
+        "mean_return": 3763.7
+      },
+      "V2_light_lowwing": {
+        "episodes": 3,
+        "laps": 0,
+        "mean_lap_time_s": null,
+        "time_to_lap_capped_s": 300.0,
+        "off_track": 1,
+        "spin": 1,
+        "mean_progress_m": 1114.4,
+        "mean_return": 1053.5
+      },
+      "V3_heavy_highwing": {
+        "episodes": 3,
+        "laps": 0,
+        "mean_lap_time_s": null,
+        "time_to_lap_capped_s": 300.0,
+        "off_track": 2,
+        "spin": 1,
+        "mean_progress_m": 1136.7,
+        "mean_return": 1084.0
+      },
+      "V4_dry_softs": {
+        "episodes": 3,
+        "laps": 1,
+        "mean_lap_time_s": 133.0,
+        "time_to_lap_capped_s": 244.33,
+        "off_track": 2,
+        "spin": 0,
+        "mean_progress_m": 4306.2,
+        "mean_return": 4426.4
+      },
+      "V5_dry_hards": {
+        "episodes": 3,
+        "laps": 0,
+        "mean_lap_time_s": null,
+        "time_to_lap_capped_s": 300.0,
+        "off_track": 2,
+        "spin": 0,
+        "mean_progress_m": 1357.1,
+        "mean_return": 1311.6
+      },
+      "V6_damp_inters": {
+        "episodes": 3,
+        "laps": 0,
+        "mean_lap_time_s": null,
+        "time_to_lap_capped_s": 300.0,
+        "off_track": 2,
+        "spin": 1,
+        "mean_progress_m": 874.7,
+        "mean_return": 803.9
+      },
+      "V7_wet_wets": {
+        "episodes": 3,
+        "laps": 0,
+        "mean_lap_time_s": null,
+        "time_to_lap_capped_s": 300.0,
+        "off_track": 3,
+        "spin": 0,
+        "mean_progress_m": 733.3,
+        "mean_return": 610.6
+      }
+    }
+  },
+  "validation_panel": {
+    "V1_benign": {
+      "episodes": 3,
+      "laps": 1,
+      "mean_lap_time_s": 153.34,
+      "time_to_lap_capped_s": 251.11,
+      "off_track": 0,
+      "spin": 0,
+      "mean_progress_m": 3709.7,
+      "mean_return": 3763.7
+    },
+    "V2_light_lowwing": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 1,
+      "spin": 1,
+      "mean_progress_m": 1114.4,
+      "mean_return": 1053.5
+    },
+    "V3_heavy_highwing": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 2,
+      "spin": 1,
+      "mean_progress_m": 1136.7,
+      "mean_return": 1084.0
+    },
+    "V4_dry_softs": {
+      "episodes": 3,
+      "laps": 1,
+      "mean_lap_time_s": 133.0,
+      "time_to_lap_capped_s": 244.33,
+      "off_track": 2,
+      "spin": 0,
+      "mean_progress_m": 4306.2,
+      "mean_return": 4426.4
+    },
+    "V5_dry_hards": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 2,
+      "spin": 0,
+      "mean_progress_m": 1357.1,
+      "mean_return": 1311.6
+    },
+    "V6_damp_inters": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 2,
+      "spin": 1,
+      "mean_progress_m": 874.7,
+      "mean_return": 803.9
+    },
+    "V7_wet_wets": {
+      "episodes": 3,
+      "laps": 0,
+      "mean_lap_time_s": null,
+      "time_to_lap_capped_s": 300.0,
+      "off_track": 3,
+      "spin": 0,
+      "mean_progress_m": 733.3,
+      "mean_return": 610.6
+    }
+  },
+  "lap_time_distribution": {
+    "episodes": [
+      {
+        "weather": "damp",
+        "compound": "intermediate",
+        "rain_intensity": 0.3,
+        "track_temp": 29.3,
+        "fuel": 36.7,
+        "aero_level": 0.337,
+        "brake_bias": 0.585,
+        "final_drive": 3.012,
+        "lap_time": null,
+        "progress_m": 56.4,
+        "avg_speed_kmh": 123.8,
+        "termination": "off_track",
+        "return": -42.6
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 26.4,
+        "fuel": 30.8,
+        "aero_level": 0.027,
+        "brake_bias": 0.583,
+        "final_drive": 3.068,
+        "lap_time": null,
+        "progress_m": 2350.8,
+        "avg_speed_kmh": 158.6,
+        "termination": "off_track",
+        "return": 2252.8
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 42.1,
+        "fuel": 96.5,
+        "aero_level": 0.475,
+        "brake_bias": 0.617,
+        "final_drive": 2.99,
+        "lap_time": null,
+        "progress_m": 1459.6,
+        "avg_speed_kmh": 150.9,
+        "termination": "off_track",
+        "return": 1427.6
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 35.0,
+        "fuel": 97.3,
+        "aero_level": 0.149,
+        "brake_bias": 0.545,
+        "final_drive": 3.072,
+        "lap_time": null,
+        "progress_m": 1746.4,
+        "avg_speed_kmh": 188.1,
+        "termination": "off_track",
+        "return": 1722.2
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 21.4,
+        "fuel": 60.9,
+        "aero_level": 0.992,
+        "brake_bias": 0.576,
+        "final_drive": 2.906,
+        "lap_time": null,
+        "progress_m": 3114.3,
+        "avg_speed_kmh": 188.8,
+        "termination": "off_track",
+        "return": 3134.1
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 41.1,
+        "fuel": 40.4,
+        "aero_level": 0.456,
+        "brake_bias": 0.606,
+        "final_drive": 2.927,
+        "lap_time": null,
+        "progress_m": 640.8,
+        "avg_speed_kmh": 130.4,
+        "termination": "stall",
+        "return": 571.1
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 31.8,
+        "fuel": 79.3,
+        "aero_level": 0.026,
+        "brake_bias": 0.599,
+        "final_drive": 2.884,
+        "lap_time": null,
+        "progress_m": 1181.4,
+        "avg_speed_kmh": 179.4,
+        "termination": "off_track",
+        "return": 1131.0
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 25.0,
+        "fuel": 52.3,
+        "aero_level": 0.297,
+        "brake_bias": 0.584,
+        "final_drive": 2.938,
+        "lap_time": null,
+        "progress_m": 19.3,
+        "avg_speed_kmh": 121.9,
+        "termination": "off_track",
+        "return": -81.3
+      },
+      {
+        "weather": "dry",
+        "compound": "hard",
+        "rain_intensity": 0.0,
+        "track_temp": 29.6,
+        "fuel": 47.5,
+        "aero_level": 0.511,
+        "brake_bias": 0.573,
+        "final_drive": 3.142,
+        "lap_time": null,
+        "progress_m": 1523.3,
+        "avg_speed_kmh": 150.8,
+        "termination": "off_track",
+        "return": 1493.9
+      },
+      {
+        "weather": "wet",
+        "compound": "wet",
+        "rain_intensity": 0.936,
+        "track_temp": 29.7,
+        "fuel": 71.5,
+        "aero_level": 0.562,
+        "brake_bias": 0.602,
+        "final_drive": 2.938,
+        "lap_time": null,
+        "progress_m": 109.0,
+        "avg_speed_kmh": 206.1,
+        "termination": "spin",
+        "return": 14.1
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 40.1,
+        "fuel": 71.7,
+        "aero_level": 0.715,
+        "brake_bias": 0.596,
+        "final_drive": 3.053,
+        "lap_time": null,
+        "progress_m": 2384.7,
+        "avg_speed_kmh": 175.2,
+        "termination": "off_track",
+        "return": 2359.1
+      },
+      {
+        "weather": "dry",
+        "compound": "hard",
+        "rain_intensity": 0.0,
+        "track_temp": 36.7,
+        "fuel": 58.5,
+        "aero_level": 0.819,
+        "brake_bias": 0.586,
+        "final_drive": 2.985,
+        "lap_time": null,
+        "progress_m": 930.3,
+        "avg_speed_kmh": 165.7,
+        "termination": "off_track",
+        "return": 870.7
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 24.2,
+        "fuel": 20.3,
+        "aero_level": 0.611,
+        "brake_bias": 0.547,
+        "final_drive": 2.983,
+        "lap_time": null,
+        "progress_m": 4088.1,
+        "avg_speed_kmh": 179.3,
+        "termination": "off_track",
+        "return": 4181.8
+      },
+      {
+        "weather": "damp",
+        "compound": "wet",
+        "rain_intensity": 0.151,
+        "track_temp": 16.3,
+        "fuel": 71.7,
+        "aero_level": 0.375,
+        "brake_bias": 0.615,
+        "final_drive": 2.92,
+        "lap_time": null,
+        "progress_m": 393.9,
+        "avg_speed_kmh": 215.1,
+        "termination": "off_track",
+        "return": 310.7
+      },
+      {
+        "weather": "wet",
+        "compound": "wet",
+        "rain_intensity": 0.478,
+        "track_temp": 14.6,
+        "fuel": 36.2,
+        "aero_level": 0.207,
+        "brake_bias": 0.566,
+        "final_drive": 2.929,
+        "lap_time": null,
+        "progress_m": 56.8,
+        "avg_speed_kmh": 158.9,
+        "termination": "off_track",
+        "return": -42.2
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 35.9,
+        "fuel": 67.8,
+        "aero_level": 0.66,
+        "brake_bias": 0.611,
+        "final_drive": 3.001,
+        "lap_time": null,
+        "progress_m": 27.0,
+        "avg_speed_kmh": 108.3,
+        "termination": "off_track",
+        "return": -73.6
+      },
+      {
+        "weather": "damp",
+        "compound": "wet",
+        "rain_intensity": 0.068,
+        "track_temp": 19.9,
+        "fuel": 102.6,
+        "aero_level": 0.101,
+        "brake_bias": 0.588,
+        "final_drive": 2.954,
+        "lap_time": null,
+        "progress_m": 972.3,
+        "avg_speed_kmh": 217.4,
+        "termination": "off_track",
+        "return": 913.5
+      },
+      {
+        "weather": "dry",
+        "compound": "hard",
+        "rain_intensity": 0.0,
+        "track_temp": 43.8,
+        "fuel": 64.9,
+        "aero_level": 0.221,
+        "brake_bias": 0.555,
+        "final_drive": 2.937,
+        "lap_time": null,
+        "progress_m": 1928.9,
+        "avg_speed_kmh": 182.2,
+        "termination": "off_track",
+        "return": 1917.9
+      },
+      {
+        "weather": "damp",
+        "compound": "intermediate",
+        "rain_intensity": 0.191,
+        "track_temp": 16.9,
+        "fuel": 82.6,
+        "aero_level": 0.881,
+        "brake_bias": 0.569,
+        "final_drive": 3.039,
+        "lap_time": null,
+        "progress_m": 261.6,
+        "avg_speed_kmh": 176.7,
+        "termination": "off_track",
+        "return": 154.4
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 25.9,
+        "fuel": 75.4,
+        "aero_level": 0.301,
+        "brake_bias": 0.566,
+        "final_drive": 2.933,
+        "lap_time": null,
+        "progress_m": 2232.7,
+        "avg_speed_kmh": 182.9,
+        "termination": "off_track",
+        "return": 2233.2
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 42.2,
+        "fuel": 104.8,
+        "aero_level": 0.633,
+        "brake_bias": 0.56,
+        "final_drive": 2.99,
+        "lap_time": null,
+        "progress_m": 515.3,
+        "avg_speed_kmh": 114.2,
+        "termination": "stall",
+        "return": 438.3
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 24.1,
+        "fuel": 51.3,
+        "aero_level": 0.141,
+        "brake_bias": 0.581,
+        "final_drive": 3.048,
+        "lap_time": null,
+        "progress_m": 1346.6,
+        "avg_speed_kmh": 147.7,
+        "termination": "spin",
+        "return": 1300.1
+      },
+      {
+        "weather": "dry",
+        "compound": "hard",
+        "rain_intensity": 0.0,
+        "track_temp": 22.6,
+        "fuel": 94.5,
+        "aero_level": 0.291,
+        "brake_bias": 0.556,
+        "final_drive": 2.961,
+        "lap_time": null,
+        "progress_m": 130.8,
+        "avg_speed_kmh": 162.2,
+        "termination": "off_track",
+        "return": 32.2
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 38.2,
+        "fuel": 26.3,
+        "aero_level": 0.922,
+        "brake_bias": 0.583,
+        "final_drive": 3.031,
+        "lap_time": null,
+        "progress_m": 362.9,
+        "avg_speed_kmh": 174.1,
+        "termination": "off_track",
+        "return": 271.1
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 30.6,
+        "fuel": 99.9,
+        "aero_level": 0.533,
+        "brake_bias": 0.568,
+        "final_drive": 3.008,
+        "lap_time": null,
+        "progress_m": 3396.1,
+        "avg_speed_kmh": 171.0,
+        "termination": "off_track",
+        "return": 3435.3
+      },
+      {
+        "weather": "wet",
+        "compound": "wet",
+        "rain_intensity": 0.368,
+        "track_temp": 14.1,
+        "fuel": 89.2,
+        "aero_level": 0.325,
+        "brake_bias": 0.561,
+        "final_drive": 2.852,
+        "lap_time": null,
+        "progress_m": 125.0,
+        "avg_speed_kmh": 191.3,
+        "termination": "spin",
+        "return": 31.0
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 37.4,
+        "fuel": 76.9,
+        "aero_level": 0.217,
+        "brake_bias": 0.573,
+        "final_drive": 3.013,
+        "lap_time": null,
+        "progress_m": 378.1,
+        "avg_speed_kmh": 231.2,
+        "termination": "spin",
+        "return": 293.8
+      },
+      {
+        "weather": "damp",
+        "compound": "medium",
+        "rain_intensity": 0.486,
+        "track_temp": 14.1,
+        "fuel": 58.6,
+        "aero_level": 0.271,
+        "brake_bias": 0.554,
+        "final_drive": 3.107,
+        "lap_time": null,
+        "progress_m": 1450.2,
+        "avg_speed_kmh": 222.1,
+        "termination": "off_track",
+        "return": 1420.3
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 29.7,
+        "fuel": 41.4,
+        "aero_level": 0.295,
+        "brake_bias": 0.609,
+        "final_drive": 3.092,
+        "lap_time": null,
+        "progress_m": 2848.1,
+        "avg_speed_kmh": 182.4,
+        "termination": "spin",
+        "return": 2870.3
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 30.9,
+        "fuel": 75.2,
+        "aero_level": 0.433,
+        "brake_bias": 0.573,
+        "final_drive": 2.962,
+        "lap_time": null,
+        "progress_m": 2850.9,
+        "avg_speed_kmh": 205.7,
+        "termination": "off_track",
+        "return": 2881.5
+      },
+      {
+        "weather": "damp",
+        "compound": "wet",
+        "rain_intensity": 0.215,
+        "track_temp": 26.3,
+        "fuel": 64.0,
+        "aero_level": 0.986,
+        "brake_bias": 0.6,
+        "final_drive": 3.006,
+        "lap_time": null,
+        "progress_m": 548.6,
+        "avg_speed_kmh": 233.9,
+        "termination": "off_track",
+        "return": 474.3
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 28.3,
+        "fuel": 41.4,
+        "aero_level": 0.262,
+        "brake_bias": 0.557,
+        "final_drive": 2.968,
+        "lap_time": null,
+        "progress_m": 1933.4,
+        "avg_speed_kmh": 164.2,
+        "termination": "spin",
+        "return": 1917.2
+      },
+      {
+        "weather": "damp",
+        "compound": "wet",
+        "rain_intensity": 0.087,
+        "track_temp": 16.5,
+        "fuel": 23.5,
+        "aero_level": 0.842,
+        "brake_bias": 0.582,
+        "final_drive": 3.038,
+        "lap_time": null,
+        "progress_m": 67.0,
+        "avg_speed_kmh": 198.5,
+        "termination": "off_track",
+        "return": -32.3
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 21.5,
+        "fuel": 71.8,
+        "aero_level": 0.317,
+        "brake_bias": 0.556,
+        "final_drive": 2.872,
+        "lap_time": null,
+        "progress_m": 1782.6,
+        "avg_speed_kmh": 174.0,
+        "termination": "off_track",
+        "return": 1759.9
+      },
+      {
+        "weather": "damp",
+        "compound": "soft",
+        "rain_intensity": 0.088,
+        "track_temp": 29.6,
+        "fuel": 67.3,
+        "aero_level": 0.004,
+        "brake_bias": 0.547,
+        "final_drive": 3.013,
+        "lap_time": null,
+        "progress_m": 227.6,
+        "avg_speed_kmh": 181.3,
+        "termination": "off_track",
+        "return": 136.1
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 38.2,
+        "fuel": 55.2,
+        "aero_level": 0.145,
+        "brake_bias": 0.608,
+        "final_drive": 2.904,
+        "lap_time": null,
+        "progress_m": 4243.4,
+        "avg_speed_kmh": 149.0,
+        "termination": "off_track",
+        "return": 4282.8
+      },
+      {
+        "weather": "dry",
+        "compound": "medium",
+        "rain_intensity": 0.0,
+        "track_temp": 28.0,
+        "fuel": 94.9,
+        "aero_level": 0.101,
+        "brake_bias": 0.614,
+        "final_drive": 3.028,
+        "lap_time": null,
+        "progress_m": 23.1,
+        "avg_speed_kmh": 85.5,
+        "termination": "off_track",
+        "return": -79.4
+      },
+      {
+        "weather": "dry",
+        "compound": "soft",
+        "rain_intensity": 0.0,
+        "track_temp": 28.2,
+        "fuel": 32.9,
+        "aero_level": 0.941,
+        "brake_bias": 0.554,
+        "final_drive": 2.942,
+        "lap_time": null,
+        "progress_m": 1900.2,
+        "avg_speed_kmh": 161.5,
+        "termination": "spin",
+        "return": 1881.4
+      },
+      {
+        "weather": "damp",
+        "compound": "wet",
+        "rain_intensity": 0.383,
+        "track_temp": 27.4,
+        "fuel": 93.4,
+        "aero_level": 0.575,
+        "brake_bias": 0.545,
+        "final_drive": 2.96,
+        "lap_time": null,
+        "progress_m": 162.5,
+        "avg_speed_kmh": 224.6,
+        "termination": "off_track",
+        "return": 68.9
+      },
+      {
+        "weather": "damp",
+        "compound": "intermediate",
+        "rain_intensity": 0.214,
+        "track_temp": 21.1,
+        "fuel": 69.1,
+        "aero_level": 0.217,
+        "brake_bias": 0.546,
+        "final_drive": 2.867,
+        "lap_time": null,
+        "progress_m": 34.3,
+        "avg_speed_kmh": 81.9,
+        "termination": "off_track",
+        "return": -69.6
+      }
+    ],
+    "finish_rate": 0.0,
+    "lap_stats": null,
+    "dnf_progress": {
+      "mean": 1245.1075,
+      "median": 951.3
+    },
+    "by_weather": {
+      "damp": {
+        "episodes": 10,
+        "finished": 0,
+        "mean_lap_time": null
+      },
+      "dry": {
+        "episodes": 27,
+        "finished": 0,
+        "mean_lap_time": null
+      },
+      "wet": {
+        "episodes": 3,
+        "finished": 0,
+        "mean_lap_time": null
+      }
+    }
+  },
+  "generalist_vs_specialists": {
+    "episodes_per_condition": 5,
+    "items": [
+      {
+        "condition": "H1_dry_mid",
+        "specialist_steps": 250000,
+        "generalist": {
+          "episodes": 5,
+          "laps": 0,
+          "mean_lap_time_s": null,
+          "time_to_lap_capped_s": 300.0,
+          "off_track": 5,
+          "spin": 0,
+          "mean_progress_m": 1982.2,
+          "mean_return": 1945.5
+        },
+        "specialist": {
+          "episodes": 5,
+          "laps": 0,
+          "mean_lap_time_s": null,
+          "time_to_lap_capped_s": 300.0,
+          "off_track": 5,
+          "spin": 0,
+          "mean_progress_m": 113.6,
+          "mean_return": 13.4
+        },
+        "gap_time_to_lap_pct": 0.0,
+        "gap_lap_time_pct": null,
+        "progress_ratio": 17.444
+      },
+      {
+        "condition": "H2_dry_heavy_maxwing",
+        "specialist_steps": 250000,
+        "generalist": {
+          "episodes": 5,
+          "laps": 0,
+          "mean_lap_time_s": null,
+          "time_to_lap_capped_s": 300.0,
+          "off_track": 2,
+          "spin": 3,
+          "mean_progress_m": 1051.2,
+          "mean_return": 991.8
+        },
+        "specialist": {
+          "episodes": 5,
+          "laps": 0,
+          "mean_lap_time_s": null,
+          "time_to_lap_capped_s": 300.0,
+          "off_track": 3,
+          "spin": 2,
+          "mean_progress_m": 970.2,
+          "mean_return": 905.8
+        },
+        "gap_time_to_lap_pct": 0.0,
+        "gap_lap_time_pct": null,
+        "progress_ratio": 1.083
+      },
+      {
+        "condition": "H3_damp_inters_light",
+        "specialist_steps": 250000,
+        "generalist": {
+          "episodes": 5,
+          "laps": 0,
+          "mean_lap_time_s": null,
+          "time_to_lap_capped_s": 300.0,
+          "off_track": 4,
+          "spin": 1,
+          "mean_progress_m": 568.4,
+          "mean_return": 492.7
+        },
+        "specialist": {
+          "episodes": 5,
+          "laps": 1,
+          "mean_lap_time_s": 157.08,
+          "time_to_lap_capped_s": 271.42,
+          "off_track": 3,
+          "spin": 1,
+          "mean_progress_m": 2729.5,
+          "mean_return": 2763.9
+        },
+        "gap_time_to_lap_pct": 10.53,
+        "gap_lap_time_pct": null,
+        "progress_ratio": 0.208
+      },
+      {
+        "condition": "H4_wet_wets_midfuel",
+        "specialist_steps": 250000,
+        "generalist": {
+          "episodes": 5,
+          "laps": 0,
+          "mean_lap_time_s": null,
+          "time_to_lap_capped_s": 300.0,
+          "off_track": 4,
+          "spin": 1,
+          "mean_progress_m": 542.3,
+          "mean_return": 465.5
+        },
+        "specialist": {
+          "episodes": 5,
+          "laps": 2,
+          "mean_lap_time_s": 176.88,
+          "time_to_lap_capped_s": 250.75,
+          "off_track": 3,
+          "spin": 0,
+          "mean_progress_m": 3260.2,
+          "mean_return": 3319.8
+        },
+        "gap_time_to_lap_pct": 19.64,
+        "gap_lap_time_pct": null,
+        "progress_ratio": 0.166
+      }
+    ]
+  }
+}

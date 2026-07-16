@@ -35,8 +35,9 @@ weaken thresholds to force a pass. If a spec is unclear, ask before coding.
 3. Conditions model (tire compounds, degradation, fuel burn, weather) — ✅ DONE, validated.
 4. Gym environment wrapper (obs / action / reward / termination + domain randomization) — ✅ DONE, validated.
 5. SAC driver agent — ✅ DONE, validated (full-lap acceptance deferred to Layer 6 by design).
-6. Training loop + curriculum + domain randomization (generalist driver) — ▶ NEXT.
-7. Telemetry calibration & validation — pending (justifies "no physical testing").
+6. Training loop + curriculum + domain randomization (generalist driver) — ✅ DONE,
+   closed-documented (machinery validated; generalist partial — see Layer 6 section).
+7. Telemetry calibration & validation — ▶ NEXT (justifies "no physical testing").
 8. Setup optimization (best setup per track+weather) — pending (the deliverable).
 9. Showcase & reporting — optional.
 
@@ -118,6 +119,29 @@ bit-identically; seed-reproducible. `evaluate()` reports lap time / avg / max sp
 full lap yet at smoke scale (extrapolates to 300–600k steps): full-lap + lap-time
 acceptance is a recorded Layer 6 obligation, along with replay-buffer persistence.
 
+## Layer 6 — training loop & curriculum (built, closed-documented)
+
+`src/agents/curriculum.py` + extended `scripts/train.py` + `SACDriver` buffer
+persistence, tested by `tests/test_train.py` (pytest or standalone). Machinery all
+validated: staged curriculum (gates + budget failsafes), DR-every-reset proven from
+the env, mid-curriculum checkpoint/resume (counters/buffer/rms exact), env-swap
+continuity, panel/distribution/comparison evaluators, tensorboard+csv logging.
+Training: four documented attempts (v1 6-dim actions → v2 SimplifiedActions 2-dim →
+v3 progressive widening + breadth-first keeper → v4 1.5M replay + (512,512) net).
+Best generalist (v4) laps 2/7 validation conditions (benign 153.3 s; dry-softs
+133.0 s — fastest lap recorded); specialists lap every weather (damp 172.8 s, wet
+too) → the generalist gap is network interference, not physics (v4 kept all past
+experience in replay and still traded skills away). Spec acceptance delivered as
+specced: documented-% vs specialists on held-out H1–H4 (+0.0 / +0.0 / +10.5 /
++19.6 % capped time-to-lap), 40-episode random-conditions lap-time distribution
+(0/40 finish — reported honestly), clean resume. T7's provisional floors
+(distribution finish ≥ 30 %) failed 4× and were retained un-weakened:
+`models/l6_generalist` is deliberately absent; drivers live at
+`models/l6_generalist_v3` (depth: benign 3/3 @ 138.1 s, beats pursuit's 140.7 s)
+and `_v4` (breadth) — point `$L6_DRIVER_DIR` at one for T7. Full record:
+`reports/layer6_report.md`. Generalization revisit queued post-L7 (placeholder tire
+physics makes off-benign conditions lethal).
+
 ## Project structure
 
 ```
@@ -143,8 +167,8 @@ f1-racing-rl/
 - Run Layer 3 validation: `python tests/test_conditions.py`
 - Run Layer 4 validation: `python tests/test_env.py`
 - Run Layer 5 validation: `python tests/test_sac.py` (T7 trains 150k steps, ~40 min)
-- Run Layer 6 validation: `python tests/test_train.py` (T7/T8 need the trained
-  generalist — `python scripts/train.py --recipe l6_generalist`)
+- Run Layer 6 validation: `python tests/test_train.py` (T7/T8 gate on artifacts; see
+  the Layer 6 section for the recorded T7 distribution-floor failure)
 
 ## Conventions (important)
 
@@ -159,8 +183,14 @@ f1-racing-rl/
 
 ## Current task
 
-Layer 6 — see `LAYER_SPECS.md` § Layer 6: training loop + curriculum + domain
-randomization (generalist driver). Plan approved in chat. Layer 5 obligations land
-here: full-lap + lap-time acceptance, replay-buffer persistence. Leftover from
-Layer 2: run `python tests/test_track.py` once online to exercise T8 (real
-Silverstone reconstruction).
+Layer 7 — see `LAYER_SPECS.md` § Layer 7: telemetry calibration & validation. Plan
+approved in chat. Offline-first: the sandbox proxy blocks all F1 data hosts, so
+`scripts/fetch_telemetry.py` runs ONCE on the user's machine/Colab (2024 British
+GP Q) and commits a small bundle to `data/telemetry_reference/`; everything else is
+offline — QSS lap profiler (`src/physics/qss_lap.py`) + metrics/fit
+(`src/utils/validation.py`, `scripts/calibrate.py`). Calibrated params ship as an
+opt-in artifact (`data/calibrated/silverstone_2024.json` + loader), CarSpec defaults
+untouched (L1–L6 suites + trained drivers stay valid). Stated acceptance: fit lap
+|Δt| ≤ 3.0 % & speed RMSE ≤ 10 km/h; hold-out ≤ 4.0 % & ≤ 12 km/h — provisional,
+stop-and-ask, never silently weakened. Leftover from Layer 2: online T8 still runs
+user-side; L7-T8 covers its spirit offline once the bundle lands.

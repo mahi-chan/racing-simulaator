@@ -148,13 +148,15 @@ physics makes off-benign conditions lethal).
 f1-racing-rl/
   CLAUDE.md  LAYER_SPECS.md  GUIDE.md  requirements.txt
   src/
-    physics/  vehicle_model.py  conditions.py(L3)
+    physics/  vehicle_model.py  conditions.py(L3)  qss_lap.py(L7)
     tracks/   track.py(L2)
     envs/     f1_env.py(L4)
-    agents/   sac_driver.py(L5)
-  scripts/    train.py(L5-6)  calibrate.py(L7)  optimize_setup.py(L8)
+    agents/   sac_driver.py(L5)  curriculum.py(L6)
+    utils/    validation.py(L7)
+  scripts/    train.py(L5-6)  fetch_telemetry.py(L7, online)  calibrate.py(L7)
+              optimize_setup.py(L8)
   tests/      validate_vehicle.py  test_track.py  test_conditions.py  test_env.py ...
-  data/       fastf1_cache/   (gitignored)
+  data/       fastf1_cache/ (gitignored)  telemetry_reference/ + calibrated/ (committed)
 ```
 
 ## Environment & commands
@@ -169,6 +171,8 @@ f1-racing-rl/
 - Run Layer 5 validation: `python tests/test_sac.py` (T7 trains 150k steps, ~40 min)
 - Run Layer 6 validation: `python tests/test_train.py` (T7/T8 gate on artifacts; see
   the Layer 6 section for the recorded T7 distribution-floor failure)
+- Run Layer 7 validation: `python tests/test_calibration.py` (T6–T8 gate on the
+  committed telemetry bundle — its one-time fetch runbook is in the skip message)
 
 ## Conventions (important)
 

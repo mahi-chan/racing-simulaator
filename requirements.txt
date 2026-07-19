@@ -16,5 +16,8 @@ torch
 # Layer 6 — training loop, curriculum, domain randomization (spec: tensorboard logging)
 tensorboard
 
+# Layer 7 — telemetry calibration: no new deps (reuses numpy/scipy offline;
+# fastf1 only for the one-time online scripts/fetch_telemetry.py pull)
+
 # Test runner (tests also run standalone: python tests/test_track.py)
 pytest
